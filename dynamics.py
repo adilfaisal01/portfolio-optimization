@@ -28,11 +28,23 @@ for i in range(0,H):
      A=np.vstack((A_top_row,A_bottom_row))
      assert A.shape==(n+1,n+1)
      A_list.append(A)
+     
+T_list=[]
+current_A=np.eye(n+1)
 
-T_list=[A_list[0]]
+for a in A_list:
+    current_A=a@current_A
+    T_list.append(current_A)
 
+T_bar=np.vstack(T_list) ##Tx_0
 
-
+S_bar=np.zeros((H*(n+1),H*n))
+for j in range(H):
+    current_impact=B
+    S_bar[j*(n+1):(j+1)*(n+1), j*n:(j+1)*(n)]=current_impact
+    for i in range(j+1,H):
+        current_impact=A_list[i]@current_impact
+        S_bar[i*(n+1) : (i+1)*(n+1), j*n : (j+1)*n] = current_impact
     
 
 
