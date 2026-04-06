@@ -15,6 +15,7 @@ assert B.shape==(n+1,n)
 
 #constructing the state dynamics
 r_hat=np.random.rand(H,n)
+r_hat_cov=np.cov(r_hat,rowvar=False)
 # A_top_row=np.hstack((np.ones((1,1)),r_hat.T))
 # A_bottom_row=np.hstack((np.zeros((n,1)),I))
 # A=np.vstack((A_top_row,A_bottom_row)) #state dynamics matrix, A
@@ -45,10 +46,17 @@ for j in range(H):
     for i in range(j+1,H):
         current_impact=A_list[i]@current_impact
         S_bar[i*(n+1) : (i+1)*(n+1), j*n : (j+1)*n] = current_impact
-    
 
 
+# print(S_bar.shape)
+# print(T_bar.shape)
+
+Q_bar_top=np.zeros((1,n+1))
+Q_bar_bottom=np.hstack((np.zeros((n,1)),r_hat_cov))
+Q_bar=np.vstack((Q_bar_top,Q_bar_bottom))
+
+print(Q_bar.shape)    
+assert Q_bar.shape==(n+1,n+1) #making the cost matrices from the covariances of the returns
 
 
-    
 
