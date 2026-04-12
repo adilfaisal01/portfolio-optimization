@@ -44,16 +44,10 @@ print(f'shape of phi:{parameters.coefs[0].shape}')
 
 #forecasting using VAR
 predictions_return=parameters.forecast(TD[-parameters.k_ar:],steps=100) #steps denote the number of days im forecasting
-pred_return_covariance=parameters.forecast_cov(steps=1) #covariance prediction 
+pred_return_covariance=parameters.forecast_cov(steps=1) #covariance prediction
+
+print(predictions_return.shape)
+print(pred_return_covariance.shape)
 
 # xx=np.vstack((TD,predictions_return))
 # print(xx.shape)
-
-
-
-
-
-
-
-
-

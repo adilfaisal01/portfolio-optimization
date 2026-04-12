@@ -128,5 +128,55 @@ class MPCPLanner:
             print("Solver failed to find a solution!")
         
         return u_today
+
+class MarketSimulator:
+    def __init__(self, initial_wealth, initial_weights):
+        """
+        initial_wealth: float (e.g. 10000)
+        initial_weights: array-like of shape (7,) or (7, 1)
+        """
+        self.n = len(initial_weights)
+        # State stored as Log Wealth and a column vector of weights
+        self.P = np.log(initial_wealth)
+        self.w = np.array(initial_weights).reshape(self.n, 1)
         
+    def step(self, u_trade, r_log_actual):
+        """
+        Updates the portfolio based on the trade executed this morning 
+        and the actual market returns realized by this evening.
         
+        u_trade: (7, 1) vector of weight changes from MPC
+        r_log_actual: (7,) or (7, 1) vector of ACTUAL log returns from your CSV
+        """
+        # 1. Clean up shapes
+        u_trade = u_trade.reshape(self.n, 1)
+        r_log_actual = r_log_actual.reshape(self.n, 1)
+        
+        # 2. Execution (Morning)
+        # Apply the trade to the current weights
+        w_post_trade = self.w + u_trade
+        
+        # 3. Wealth Update (End of Day)
+        # Portfolio Log Return = w^T @ r
+        day_return = (w_post_trade.T @ r_log_actual).item()
+        self.P += day_return
+        
+        # 4. Weight Drift (The "Physical" update)
+        # Because Asset A grew 5% and Asset B grew 1%, their relative weights change.
+        # w_new = (w * exp(r)) / sum(w * exp(r))
+        growth_factors = np.exp(r_log_actual)
+        numerator = w_post_trade * growth_factors
+        self.w = numerator / np.sum(numerator)
+        
+        return self.get_state()
+
+    def get_state(self):
+        """
+        Returns the (8, 1) state vector [LogWealth, w1, ..., w7]
+        This matches the x_0 expected by your MPCPlanner.
+        """
+        return np.vstack([self.P, self.w])
+
+    def get_total_value(self):
+        """Returns wealth in dollar terms"""
+        return np.exp(self.P)
