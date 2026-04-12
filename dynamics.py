@@ -1,11 +1,13 @@
 import numpy as np
 from numpy._core.shape_base import block
 import osqp
+from scipy import sparse
 from scipy.sparse import block_diag
 
-n=2 #number of assets
-N=3 #how many days am I looking ahead
+n=7 #number of assets
+N=30 #how many days am I looking ahead
 state_dim=n+1 # how many states I have, assets plus cash (hence n assets, plus 1 wealth tracker)
+w_max=0.20 # maximum weight in a single asset
 
 #system dynamics setup
 I=np.identity(n)
@@ -13,7 +15,6 @@ x_0=[10000]
 
 for w in range(0,n):
     x_0.append(1/n)
-
 x_0=np.array(x_0).reshape(-1,1) # initial conditions, initial wealth and weights, assume equal distribution
 
 # constructing according to MPC formulation, x_{k+1}=Ax_k+Bu_k
@@ -95,8 +96,47 @@ q_goal=-1*(c.T@S_bar).reshape(-1,1)
 
 q_total= q_goal+q_risk #linear term
 
+# constrain handling
+leftm_s=np.zeros((n,1))
+rightm_s=np.eye(n)
+m_s=np.hstack((leftm_s,rightm_s))
+
+M=block_diag([m_s for _ in range(N)],format='csc').toarray() #0<w_i<0.20
+print(M.shape)
+# print(M)
+
+l_wi=0-M@T_bar@x_0
+u_wi=w_max-M@T_bar@x_0
+
+# sum constraints, sum(w_i)=1
+m_row=np.hstack((0, np.ones(n)))
+M_sum=block_diag([m_row.reshape(1,-1) for _ in range(N)], format='csc').toarray()
+print(M_sum.shape)
+l_ws=1-M_sum@T_bar@x_0
+u_ws=l_ws
+
+Aineq=sparse.csc_matrix(M@S_bar)
+Aeq=sparse.csc_matrix(M_sum@S_bar)
+A_cons=sparse.vstack([Aineq,Aeq],format='csc')
+l_cons=np.hstack([l_wi.flatten(),l_ws.flatten()])
+u_cons=np.hstack([u_wi.flatten(),u_ws.flatten()])
 
 
+prob=osqp.OSQP()
+prob.setup(sparse.csc_matrix(H),q_total.flatten(),A_cons,l_cons,u_cons,warm_starting=True)
+
+# solve the osqp problem
+res = prob.solve()
+
+# Check if it worked
+if res.info.status == 'solved':
+    # z is our plan: [u0, u1, ... u29]
+    z_optimal = res.x
+    # We only execute the first move (MPC principle)
+    u_today = z_optimal[:n] 
+    print("Optimal trades for today:", u_today)
+else:
+    print("Solver failed to find a solution!")
 
 
 
