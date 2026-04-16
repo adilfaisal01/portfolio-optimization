@@ -32,10 +32,17 @@ class VARAnalysis:
         # vector autoregression
         TD=np.array(train_data[self.indices_list])
         model=VAR(TD)
-        self.parameters=model.fit(ic='aic')
-        self.k_ar=self.parameters.k_ar
-        self.coeffs=self.parameters.coefs
-        self.intercepts=self.parameters.intercept
+        
+        if self.k_ar is None:
+            self.parameters=model.fit(ic='aic')
+            self.k_ar=self.parameters.k_ar
+            self.coeffs=self.parameters.coefs
+            self.intercepts=self.parameters.intercept
+        else:
+            self.parameters=model.fit(ic='aic',maxlags=self.k_ar)
+            self.k_ar=self.parameters.k_ar
+            self.coeffs=self.parameters.coefs
+            self.intercepts=self.parameters.intercept
     def forecast_model(self,N_horizon,lookbackdata):
         #forecasting using VAR
         predictions_return=self.parameters.forecast(y=lookbackdata,steps=N_horizon) #steps denote the number of days im forecasting
