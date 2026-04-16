@@ -35,7 +35,7 @@ step=0
 for t in range(len(test_df)):
     # --- A. Context Gathering ---
     # Get the last k days of returns to feed the VAR forecast
-    current_lookback = full_history[indices].values[-1:]
+    current_lookback = full_history[indices].values[-var_eng.k_ar:]
     
     # --- B. Adaptive Refit (Monthly / Every 21 Days) ---
     if t % 21== 0 and t > 0:
