@@ -13,13 +13,18 @@ train_df, test_df = var_eng.data_segmentation()
 # Pre-train the "Brain" on the 11-year stable regime
 var_eng.fit_model(train_df)
 
+## VIX model calculations
+
+vix_data=pd.read_csv("../test_vix.csv")
+vix_normal=18 #calculated from 2009-2019, normal conditions
+
 # Initialize the "Physical Reality"
 # Starting with $10,000 and equal weights
 market = MarketSimulator(initial_wealth=10000, initial_weights=[1/7]*7)
 
 # Initialize the "Strategist"
-planner = MPCPLanner(n_assets=7, wmax=0.30, N_horizon=30, trans_cost=1)
-
+R_base=1
+planner = MPCPLanner(n_assets=7, wmax=0.30, N_horizon=30, trans_cost=R_base)
 # Storage for performance analysis
 history = []
 indices = var_eng.indices_list
@@ -30,12 +35,12 @@ print("Starting Backtest: 2020 to 2025...")
 
 # We use an expanding window. Every step, we add the new day to our history.
 full_history = train_df.copy()
-step=0
 
 for t in range(len(test_df)):
     # --- A. Context Gathering ---
     # Get the last k days of returns to feed the VAR forecast
     current_lookback = full_history[indices].values[-var_eng.k_ar:]
+    
     
     # --- B. Adaptive Refit (Monthly / Every 21 Days) ---
     if t % 21== 0 and t > 0:
@@ -47,9 +52,11 @@ for t in range(len(test_df)):
     r_hat, r_cov = var_eng.forecast_model(lookbackdata=current_lookback, N_horizon=30)
     
     # --- D. Planning (Solving OSQP) ---
+    vix_multiplier=(vix_data.iloc[t]['^VIX']/vix_normal)*2
     x_0 = market.get_state()
-    u_today = planner.solver(x_0, r_hat, r_cov)
     
+    planner.R_val=R_base*vix_multiplier
+    u_today = planner.solver(x_0, r_hat, r_cov) 
     # --- E. Execution (The Reality) ---
     actual_r = test_df[indices].iloc[t].values
     market.step(u_today, actual_r)
@@ -67,13 +74,25 @@ for t in range(len(test_df)):
 
 print("Backtest Complete!")
 
+# Simple Benchmark Loop
+benchmark_wealth = 10000
+benchmark_history = []
+for t in range(len(test_df)):
+    actual_r = test_df[indices].iloc[t].values
+    daily_bench_return = np.mean(actual_r)
+    benchmark_wealth *= np.exp(daily_bench_return)
+    benchmark_history.append(benchmark_wealth)
+
+bench_series = pd.Series(benchmark_history)
+
 # 3. ANALYSIS & VISUALIZATION
 # ---------------------------------------------------------
 perf_df = pd.DataFrame(history)
 perf_df['Date'] = pd.to_datetime(perf_df['Date'])
 
 plt.figure(figsize=(12, 6))
-plt.plot(perf_df['Date'], perf_df['Wealth'], label='MPC-VAR Strategy')
+plt.plot(perf_df['Date'], perf_df['Wealth'], label='MPC-VAR Strategy', color='black')
+plt.plot(perf_df['Date'],bench_series, label="Buy and Hold", color='red')
 plt.title("Equity Curve: 2020 - 2025 (COVID & Post-COVID Adaptation)")
 plt.xlabel("Year")
 plt.ylabel("Portfolio Value ($)")
@@ -82,21 +101,16 @@ plt.legend()
 plt.show()
 # Plotting the Weight Distribution over time
 weight_data = np.array([h['Weights'] for h in history])
+turnover = np.abs(np.diff(weight_data, axis=0)).sum(axis=1)
+print(f"Mean daily turnover: {turnover.mean():.4f}")
+print(f"Max daily turnover:  {turnover.max():.4f}")
+
 plt.figure(figsize=(12, 6))
 plt.stackplot(perf_df['Date'], weight_data.T, labels=indices)
 plt.title("Portfolio Allocation (2020 - 2025)")
 plt.ylabel("Weight (%)")
 plt.legend(loc='upper left')
 plt.show()
-
-# Simple Benchmark Loop
-benchmark_wealth = 10000
-for t in range(len(test_df)):
-    actual_r = test_df[indices].iloc[t].values
-    # Average return of all 7 assets
-    daily_bench_return = np.mean(actual_r) 
-    benchmark_wealth *= np.exp(daily_bench_return)
-print(f"Benchmark Final Wealth: ${benchmark_wealth:,.2f}")
 
 # 1. Calculate Daily Returns
 perf_df['MPC_Return'] = perf_df['Wealth'].pct_change()
@@ -122,10 +136,18 @@ peak = perf_df['Wealth'].cummax()
 drawdown = (perf_df['Wealth'] - peak) / peak
 max_drawdown = abs(drawdown.min())
 
+bench_peak = bench_series.cummax()
+bench_drawdown = (bench_series - bench_peak) / bench_peak
+bench_max_drawdown = abs(bench_drawdown.min())
+print(f"Benchmark Max Drawdown: {bench_max_drawdown:.2%}")
+
 # Calculate CAGR
 years = (pd.to_datetime(test_df.iloc[-1]['Date']) - pd.to_datetime(test_df.iloc[0]['Date'])).days / 365.25
 total_return = (market.get_total_value() / 10000) - 1
+bench_return=(bench_series.iloc[-1]/10000)-1
 cagr = (1 + total_return)**(1/years) - 1
+bench_cagr=(1 + bench_return)**(1/years) - 1
+print(f"Benchmark CAGR:{bench_cagr:.2%}")
 
 calmar = cagr / max_drawdown
 
