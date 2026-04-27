@@ -10,6 +10,7 @@ class MPCPLanner:
         self.N=N_horizon
         self.R_val=trans_cost
         self.state_dim=self.n+1
+        self.gamma=1
  # initial conditions, initial wealth and weights, assume equal distribution
     def _dynamic_matrices(self,r_hat):
         I=np.identity(self.n)
@@ -73,7 +74,7 @@ class MPCPLanner:
         terminal_wealth_index=(self.N-1)*self.state_dim
         c=np.zeros(self.N*self.state_dim)
         c[terminal_wealth_index]=1.0
-        q_goal=-1*(c.T@self.S_bar).reshape(-1,1)
+        q_goal=-self.gamma*(c.T@self.S_bar).reshape(-1,1)
         
         q_total= q_goal+q_risk #linear term
         return H, q_total
