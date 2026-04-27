@@ -147,8 +147,8 @@ The MPC strategy delivers superior **risk-adjusted returns** — second-highest 
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/mpc-var-portfolio.git
-cd mpc-var-portfolio
+git clone https://github.com/adilfaisal01/portfolio-optimization.git
+cd portfolio-optimization
 pip install -r requirements.txt
 ```
 
