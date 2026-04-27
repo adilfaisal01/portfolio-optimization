@@ -40,7 +40,6 @@ The strategy was backtested from **January 2020 to December 2025** — a period 
 ├── min_variance.py      # Min-variance benchmark strategy (daily rolling)
 ├── investors.py         # Benchmark comparison vs ARKK, BRK-B, SPY, PSHZF
 ├── unit_tests.py        # Pytest suite covering planner, simulator, and edge cases
-└── SE701_stage2_report_adil.pdf  # Full project report
 ```
 
 * * *
