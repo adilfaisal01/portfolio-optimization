@@ -32,6 +32,11 @@ MANIFEST
 *.manifest
 *.spec
 
+# Agentic stuff
+AGENTS.md
+.pca_grpo_plan.md
+
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
