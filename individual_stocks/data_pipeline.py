@@ -1,4 +1,6 @@
+from posix import close
 import pandas as pd
+from pandas.core.ops.docstrings import key
 import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,11 +33,34 @@ for y in range(2009,2021):
     for ticker, val in stock_volume_share.items():
             volumes_share.append({'year': y, 'ticker': ticker, 'vol_share': val})
 
-    
-
 # pd.DataFrame(volumes_share).to_parquet('volume_share.parquet')
 
 # xpp= pd.read_parquet('volume_share.parquet')
 # print(xpp['year'])
 
-## get the 
+def DataProcessing(stock_data:pd.DataFrame,start_year:int,end_year:int,keyword:str):
+    low_price_data=[]
+    price_data=stock_data.loc[:,(keyword,slice(None))]
+    for yy in range(start_year,end_year):
+        yy2=str(yy)
+        y1=price_data.loc[yy2]
+        y1=y1[keyword]
+        for ticker,ps in y1.items():
+            for date,price in ps.items():
+                low_price_data.append({'date':date, 'ticker': ticker, f'{keyword} price': price})
+    return low_price_data
+
+# pd.DataFrame(low_price_data).to_parquet('low_price.parquet')
+# xpp_1= pd.read_parquet('low_price.parquet')
+# print('1')
+# print(xpp_1[xpp_1['ticker']=='AAPL'])
+# 
+
+word_list=['High','Close','Open','Low']
+
+for word in word_list:
+    price_list=DataProcessing(xx,2009,2021,word)
+    pd.DataFrame(price_list).to_parquet(f'{word}_price.parquet')
+
+
+
