@@ -1,9 +1,6 @@
-from posix import close
 import pandas as pd
-from pandas.core.ops.docstrings import key
 import yfinance as yf
-import numpy as np
-import matplotlib.pyplot as plt
+
 #collecting stock data
 
 # df=pd.read_csv('stock_universe_220.csv')['Ticker'].to_list()
