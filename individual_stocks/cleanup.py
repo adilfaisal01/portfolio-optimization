@@ -1,9 +1,16 @@
+from tracemalloc import start
 import pandas as pd
 import numpy as np
 import xarray as xr
 class StockCleaner:
-    def __init__(self, parquet_path: str):
+    def __init__(self, parquet_path: str,
+                 start_date: str | None = None,
+                 end_date: str | None = None):
         self.raw = pd.read_parquet(parquet_path)
+        if start_date is not None:
+            self.raw = self.raw.loc[self.raw.index >= start_date]
+        if end_date is not None:
+            self.raw = self.raw.loc[self.raw.index <= end_date]
         self.long = None
 
     def extract(self, price_types: list[str]) -> 'StockCleaner':
@@ -48,12 +55,12 @@ def align(*cleaners: StockCleaner) -> pd.DataFrame:
 
 # --- Adjusted OHLC + unadjusted Volume pipeline ---
 print("=== Loading & cleaning adjusted OHLC ===")
-ohlc = StockCleaner('stock_info.parquet')
+ohlc = StockCleaner('stock_info.parquet',start_date='2009-01-01',end_date='2020-12-31')
 ohlc.extract(['Close', 'High', 'Low', 'Open']).clean()
 print(f"OHLC tickers: {ohlc.get()['ticker'].nunique()}, rows: {len(ohlc.get()):,}")
 
 print("\n=== Loading & cleaning unadjusted Volume ===")
-vol = StockCleaner('stock_info_unadjusted.parquet')
+vol = StockCleaner('stock_info_unadjusted.parquet',start_date='2009-01-01',end_date='2020-12-31')
 vol.extract(['Volume']).clean()
 print(f"Volume tickers: {vol.get()['ticker'].nunique()}, rows: {len(vol.get()):,}")
 
@@ -65,18 +72,16 @@ print(f"Merged shape: {df.shape}")
 print(f"Tickers: {df['ticker'].nunique()}")
 print(f"Date range: {df['date'].min()} to {df['date'].max()}")
 
-print(df['ticker'].unique())
+df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
+df['log_return'] = df.groupby('ticker')['Close'].transform(
+lambda x: np.log(x.shift(-1) / x)
+)
+df['hl_spread'] =(df['High'] - df['Low'])/df['Open']
+df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
+print(f"Final shape: {df.shape}")
+print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
 
-
-# print("\n=== Feature engineering ===")
-# df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
-# df['log_return'] = df.groupby('ticker')['Close'].transform(
-#     lambda x: np.log(x.shift(-1) / x)
-# )
-# df['hl_spread'] = df['High'] - df['Low']
-# df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
-# print(f"Final shape: {df.shape}")
-# print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
+print(df[df['ticker']=='PLTR'])
 
 # print("\n=== Exporting to xarray ===")
 # ds = df.set_index(['date', 'ticker']).to_xarray()
