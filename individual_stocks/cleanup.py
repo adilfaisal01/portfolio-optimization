@@ -72,16 +72,22 @@ print(f"Merged shape: {df.shape}")
 print(f"Tickers: {df['ticker'].nunique()}")
 print(f"Date range: {df['date'].min()} to {df['date'].max()}")
 
+# Index(['date', 'ticker', 'Close', 'High', 'Low', 'Open', 'Volume_unadjusted'], dtype='object')
 df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
 df['log_return'] = df.groupby('ticker')['Close'].transform(
 lambda x: np.log(x.shift(-1) / x)
 )
 df['hl_spread'] =(df['High'] - df['Low'])/df['Open']
-df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
-print(f"Final shape: {df.shape}")
-print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
+df['RVOL']=df.groupby('ticker')['Volume_unadjusted'].transform(
+    lambda x: x/(x/rolling)
+)
 
-print(df[df['ticker']=='PLTR'])
+# df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
+# print(f"Final shape: {df.shape}")
+# print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
+
+
+
 
 # print("\n=== Exporting to xarray ===")
 # ds = df.set_index(['date', 'ticker']).to_xarray()
