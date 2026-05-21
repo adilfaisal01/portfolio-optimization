@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-
-
+import xarray as xr
 class StockCleaner:
     def __init__(self, parquet_path: str):
         self.raw = pd.read_parquet(parquet_path)
@@ -37,11 +36,53 @@ class StockCleaner:
         return self.long
 
 
-def align(*cleaners: StockCleaner) -> list[pd.DataFrame]:
+def align(*cleaners: StockCleaner) -> pd.DataFrame:
     dfs = [c.get() for c in cleaners]
     key = ['date', 'ticker']
-    merged = dfs[0]
+    result = dfs[0].copy()
     for df in dfs[1:]:
-        merged = pd.merge(merged, df, on=key, how='inner')
-    cols = [key + [c for c in merged.columns if c not in key]]
-    return merged
+        extra_cols = [c for c in df.columns if c not in key and c not in result.columns]
+        result = pd.merge(result, df[key + extra_cols], on=key, how='inner')
+    return result
+
+
+# --- Adjusted OHLC + unadjusted Volume pipeline ---
+print("=== Loading & cleaning adjusted OHLC ===")
+ohlc = StockCleaner('stock_info.parquet')
+ohlc.extract(['Close', 'High', 'Low', 'Open']).clean()
+print(f"OHLC tickers: {ohlc.get()['ticker'].nunique()}, rows: {len(ohlc.get()):,}")
+
+print("\n=== Loading & cleaning unadjusted Volume ===")
+vol = StockCleaner('stock_info_unadjusted.parquet')
+vol.extract(['Volume']).clean()
+print(f"Volume tickers: {vol.get()['ticker'].nunique()}, rows: {len(vol.get()):,}")
+
+print("\n=== Merging on (date, ticker) ===")
+df = pd.merge(ohlc.get(), vol.get()[['date', 'ticker', 'Volume']],
+              on=['date', 'ticker'], how='inner')
+df = df.rename(columns={'Volume': 'Volume_unadjusted'})
+print(f"Merged shape: {df.shape}")
+print(f"Tickers: {df['ticker'].nunique()}")
+print(f"Date range: {df['date'].min()} to {df['date'].max()}")
+
+print(df['ticker'].unique())
+
+
+# print("\n=== Feature engineering ===")
+# df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
+# df['log_return'] = df.groupby('ticker')['Close'].transform(
+#     lambda x: np.log(x.shift(-1) / x)
+# )
+# df['hl_spread'] = df['High'] - df['Low']
+# df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
+# print(f"Final shape: {df.shape}")
+# print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
+
+# print("\n=== Exporting to xarray ===")
+# ds = df.set_index(['date', 'ticker']).to_xarray()
+# ds = ds.fillna(0)
+# ds.to_netcdf('price_data.nc')
+# print("Saved to price_data.nc")
+
+# print(f"\nTickers: {list(ds.ticker.values[:10])}... ({len(ds.ticker)} total)")
+# print(f"Dates:   {ds.date.values[0]} to {ds.date.values[-1]} ({len(ds.date)} total)")

@@ -1,4 +1,3 @@
-from fcntl import F_SEAL_SEAL
 import yfinance as yf
 import pandas as pd
 
