@@ -15,6 +15,5 @@ def yahoo_data_pipeline(start_date:str,end_date:str,autoadjustment:bool,parquetn
 
 # stock_info.loc[:, ('Close', slice(None))]        # Close for all tickers
 
-xx_unadjusted=pd.read_parquet('stock_info_unadjusted.parquet')
-print(xx_unadjusted)
+
 
