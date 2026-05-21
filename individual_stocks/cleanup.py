@@ -1,4 +1,3 @@
-from tracemalloc import start
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -79,12 +78,11 @@ lambda x: np.log(x.shift(-1) / x)
 )
 df['hl_spread'] =(df['High'] - df['Low'])/df['Open']
 df['RVOL']=df.groupby('ticker')['Volume_unadjusted'].transform(
-    lambda x: x/(x/rolling)
+    lambda x: x/(x.rolling(20,min_periods=1).mean())
 )
-
-# df = df.dropna(subset=['log_return', 'hl_spread']).reset_index(drop=True)
+df = df.dropna(subset=['log_return', 'hl_spread','RVOL']).reset_index(drop=True)
 # print(f"Final shape: {df.shape}")
-# print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'Volume_unadjusted']].isna().any().any()}")
+print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'RVOL']].isna().any().any()}")
 
 
 
