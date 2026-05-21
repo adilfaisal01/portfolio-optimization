@@ -83,15 +83,4 @@ df['RVOL']=df.groupby('ticker')['Volume_unadjusted'].transform(
 df = df.dropna(subset=['log_return', 'hl_spread','RVOL']).reset_index(drop=True)
 # print(f"Final shape: {df.shape}")
 print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'RVOL']].isna().any().any()}")
-
-
-
-
-# print("\n=== Exporting to xarray ===")
-# ds = df.set_index(['date', 'ticker']).to_xarray()
-# ds = ds.fillna(0)
-# ds.to_netcdf('price_data.nc')
-# print("Saved to price_data.nc")
-
-# print(f"\nTickers: {list(ds.ticker.values[:10])}... ({len(ds.ticker)} total)")
-# print(f"Dates:   {ds.date.values[0]} to {ds.date.values[-1]} ({len(ds.date)} total)")
+df.to_parquet('final_dataset_stocks.parquet')

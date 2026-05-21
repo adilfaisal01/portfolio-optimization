@@ -3,9 +3,7 @@ import yfinance as yf
 
 # collecting stock data
 
-def yahoo_data_pipeline(start_date:str,end_date:str,autoadjustment:bool,parquetname:str):
-
-    df=pd.read_csv('stock_universe_220.csv')['Ticker'].to_list()
+def yahoo_data_pipeline(start_date:str,end_date:str,autoadjustment:bool,parquetname:str,df:list=pd.read_csv('stock_universe_220.csv')['Ticker'].to_list()):
     tickers = yf.Tickers(df)
     stock_info=yf.download(df,start=start_date,end=end_date,auto_adjust=autoadjustment)
     stock_info.to_parquet(f'{parquetname}.parquet')
