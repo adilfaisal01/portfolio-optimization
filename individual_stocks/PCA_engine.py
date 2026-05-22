@@ -9,5 +9,5 @@ volume_pivot=dataset.pivot_table(values='RVOL',index='date',columns='ticker').dr
 
 ## doing PCA calculations
 
-pca=PCA(n_components=12,svd_solver='full')
-pca.fit()
+pca_returns=PCA(n_components=12,svd_solver='full')
+print(pca_returns.fit(returns_pivot).explained_variance_ratio_)
