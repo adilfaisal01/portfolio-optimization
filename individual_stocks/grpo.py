@@ -75,6 +75,26 @@ class GRPOContinuousLoss(LossModule):
         6. Return TensorDict with loss_objective, entropy, clip_fraction, etc.
         """
         dist, log_weight,kl_approx= self._log_weight(tensordict)
+        ratio=log_weight.exp()
+        adv=tensordict.get(self._keys.advantage)
+        loss_term_1=adv*ratio
+        clipping_methods= torch.clamp(ratio, 1-self.clip_epsilon, 1+self.clip_epsilon)
+        loss_term2=clipping_methods*adv
+        loss=torch.min(loss_term_1,loss_term2)
+
+        #reduction of loss function
+        
+        
+        if self.entropy_bonus:
+            entropy=dist.entropy().mean()
+            loss=loss-self.entropy_coeff*entropy
+        else:
+            entropy=torch.tensor(0.0)
+
+        return TensorD
+
+        
+        
         
         raise NotImplementedError("You write this bestie 💅")
 
