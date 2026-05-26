@@ -4,7 +4,7 @@ import torch
 from tensordict.utils import NestedKey
 from collections.abc import Mapping
 from dataclasses import dataclass
-
+from torch import distributions as d
 
 class GRPOTrading(LossModule):
     @dataclass
@@ -25,9 +25,11 @@ class GRPOTrading(LossModule):
         device:torch.device | None=None,
         entropy_coeff:float | Mapping[NestedKey, float]| None=None,
         reduction:str | None=None,
+        samples_mc_entropy:int=1,
         **kwargs
         
     ):
+        super().__init__()
         if actor is not None:
             actor_network = actor
             del actor
@@ -42,16 +44,65 @@ class GRPOTrading(LossModule):
                         device = getattr(
                             torch, "get_default_device", lambda: torch.device("cpu")
                         )()
-        
-        # entropy_coef has been removed in v0.11
-        if "entropy_coef" in kwargs:
-            raise TypeError(
-                "'entropy_coef' has been removed in torchrl v0.11. Please use 'entropy_coeff' instead."
-            )
-
         # Set default value if None
         if entropy_coeff is None:
             entropy_coeff = 0.01
+
+        self.entropy_coeff=entropy_coeff
+        self.convert_to_functional(actor_network,"actor_network")
+        self.entropy_bonus=entropy_bonus
+        self.gamma=gamma
+        self.clip_value=torch.tensor(clip_values,device=device)
+        self._functional=functional
+        self.reduction=reduction
+        self.samples_mc_entropy=samples_mc_entropy
+    @property
+    def functional(self):
+        return self._functional
+
+    def _get_entropy(
+        self, dist: d.Distribution, adv_shape: torch.Size
+    ) -> torch.Tensor | TensorDict:
+        try:
+            entropy = dist.entropy()
+            if not entropy.isfinite().all():
+                del entropy
+                if VERBOSE:
+                    torchrl_logger.info(
+                        "Entropy is not finite. Using Monte Carlo sampling."
+                    )
+                raise NotImplementedError
+        except NotImplementedError:
+            if VERBOSE:
+                torchrl_logger.warning(
+                    f"Entropy not implemented for {type(dist)} or is not finite. Using Monte Carlo sampling."
+                )
+            if getattr(dist, "has_rsample", False):
+                x = dist.rsample((self.samples_mc_entropy,))
+            else:
+                x = dist.sample((self.samples_mc_entropy,))
+            with (
+                set_composite_lp_aggregate(False)
+                if isinstance(dist, CompositeDistribution)
+                else contextlib.nullcontext()
+            ):
+                log_prob = dist.log_prob(x)
+                if is_tensor_collection(log_prob):
+                    if isinstance(self.tensor_keys.sample_log_prob, NestedKey):
+                        log_prob = log_prob.get(self.tensor_keys.sample_log_prob)
+                    else:
+                        log_prob = log_prob.select(*self.tensor_keys.sample_log_prob)
+
+            entropy = -log_prob.mean(0)
+            if is_tensor_collection(entropy) and entropy.batch_size != adv_shape:
+                entropy.batch_size = adv_shape
+        return entropy.unsqueeze(-1)
         
-        super().__init__()
+
+    
+    
+    
+        
+        
+       
 
