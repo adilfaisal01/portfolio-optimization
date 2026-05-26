@@ -1,11 +1,14 @@
+import contextlib
 from dataclasses import dataclass
 from typing import Optional
 
 import torch
-from tensordict import TensorDictBase
+from tensordict import is_tensor_collection, TensorDictBase, TensorDict
 from tensordict.nn import ProbabilisticTensorDictSequential
 from tensordict.utils import NestedKey
+from torch import distributions as d
 
+from torchrl._utils import logger as torchrl_logger, VERBOSE
 from torchrl.objectives.common import LossModule
 
 
@@ -31,6 +34,7 @@ class GRPOContinuousLoss(LossModule):
         entropy_coeff: float = 0.01,
         reduction: str = "mean",
         device: Optional[torch.device] = None,
+        beta:float=0.6
     ):
         super().__init__()
 
@@ -44,8 +48,43 @@ class GRPOContinuousLoss(LossModule):
         self.entropy_bonus = entropy_bonus
         self.entropy_coeff = entropy_coeff
         self.reduction = reduction
+        self.beta=beta
 
         self._keys = self._AcceptedKeys()
+        self.samples_mc_entropy = 1
+
+    def _get_entropy(
+        self, dist: d.Distribution, adv_shape: torch.Size
+    ) -> torch.Tensor:
+        try:
+            entropy = dist.entropy()
+            if not entropy.isfinite().all():
+                del entropy
+                if VERBOSE:
+                    torchrl_logger.info(
+                        "Entropy is not finite. Using Monte Carlo sampling."
+                    )
+                raise NotImplementedError
+        except NotImplementedError:
+            if VERBOSE:
+                torchrl_logger.warning(
+                    f"Entropy not implemented for {type(dist)} or is not finite. "
+                    "Using Monte Carlo sampling."
+                )
+            if getattr(dist, "has_rsample", False):
+                x = dist.rsample((self.samples_mc_entropy,))
+            else:
+                x = dist.sample((self.samples_mc_entropy,))
+            log_prob = dist.log_prob(x)
+            if is_tensor_collection(log_prob):
+                if isinstance(self.tensor_keys.sample_log_prob, NestedKey):
+                    log_prob = log_prob.get(self.tensor_keys.sample_log_prob)
+                else:
+                    log_prob = log_prob.select(*self.tensor_keys.sample_log_prob)
+            entropy = -log_prob.mean(0)
+            if is_tensor_collection(entropy) and entropy.batch_size != adv_shape:
+                entropy.batch_size = adv_shape
+        return entropy.unsqueeze(-1)
 
     def _log_weight(self, tensordict: TensorDictBase) -> tuple:
         """Compute importance sampling log-weight from current policy."""
@@ -80,23 +119,36 @@ class GRPOContinuousLoss(LossModule):
         loss_term_1=adv*ratio
         clipping_methods= torch.clamp(ratio, 1-self.clip_epsilon, 1+self.clip_epsilon)
         loss_term2=clipping_methods*adv
-        loss=torch.min(loss_term_1,loss_term2)
+        loss=-torch.min(loss_term_1,loss_term2)
 
-        #reduction of loss function
-        
-        
-        if self.entropy_bonus:
-            entropy=dist.entropy().mean()
-            loss=loss-self.entropy_coeff*entropy
-        else:
-            entropy=torch.tensor(0.0)
+        # entropy bonus + KL penalty
+        if self.reduction == 'mean':
+            loss = loss.mean()
+            if self.entropy_bonus:
+                entropy = self._get_entropy(dist, adv.shape).mean()
+                loss = loss - self.entropy_coeff * entropy
+            else:
+                entropy = torch.tensor(0.0)
+            loss = loss + self.beta * kl_approx
 
-        return TensorD
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+            if self.entropy_bonus:
+                entropy = self._get_entropy(dist, adv.shape).sum()
+                loss = loss - self.entropy_coeff * entropy
+            else:
+                entropy = torch.tensor(0.0)
 
-        
-        
-        
-        raise NotImplementedError("You write this bestie 💅")
+        else:  # 'none'
+            entropy = torch.tensor(0.0)
+
+        return TensorDict(
+            {
+                "loss_objective": loss,
+                "entropy": entropy,
+                "clip_ratio": (ratio<1-self.clip_epsilon).float().mean()
+            },[]
+        )
 
     def set_keys(self, **kwargs) -> None:
         """Remap input keys (e.g. loss.set_keys(advantage='group_adv'))."""
