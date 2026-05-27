@@ -95,10 +95,10 @@ class GRPOContinuousLoss(LossModule):
                 x = dist.sample((self.samples_mc_entropy,))    # -> [1, B, action_dim]
             log_prob = dist.log_prob(x)                        # -> [1, B]
             if is_tensor_collection(log_prob):
-                if isinstance(self.tensor_keys.sample_log_prob, NestedKey):
-                    log_prob = log_prob.get(self.tensor_keys.sample_log_prob)
+                if isinstance(self._keys.sample_log_prob, NestedKey):
+                    log_prob = log_prob.get(self._keys.sample_log_prob)
                 else:
-                    log_prob = log_prob.select(*self.tensor_keys.sample_log_prob)
+                    log_prob = log_prob.select(*self._keys.sample_log_prob)
             entropy = -log_prob.mean(0)                        # -> [B]
             if is_tensor_collection(entropy) and entropy.batch_size != adv_shape:
                 entropy.batch_size = adv_shape
