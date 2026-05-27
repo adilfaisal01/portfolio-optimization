@@ -134,7 +134,7 @@ for iteration in range(num_iterations):
     if iteration % 10 == 0:
         print(f"Iter {iteration:3d} | Loss: {loss.item():.3f} | "
               f"Avg Return: {ret_tensor.mean().item():.1f} ± {ret_tensor.std().item():.1f} | "
-              f"Clip: {loss_vals['clip_ratio'].item():.2f} | "
+              f"Clip: [{loss_vals['clip_low'].item():.2f}, {loss_vals['clip_high'].item():.2f}] | "
               f"Entropy: {loss_vals['entropy'].item():.2f}")
 
 print(f"\n✅ Done! {num_iterations} iterations of GRPO on Pendulum-v1")
