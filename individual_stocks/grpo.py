@@ -34,7 +34,7 @@ class GRPOContinuousLoss(LossModule):
         entropy_coeff: float = 0.01,
         reduction: str = "mean",
         device: Optional[torch.device] = None,
-        beta:float=0.6
+        beta:float=0.08
     ):
         super().__init__()
 
