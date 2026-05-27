@@ -92,7 +92,7 @@ class GRPOContinuousLoss(LossModule):
         action = tensordict.get(self._keys.action)
         old_log_prob = tensordict.get(self._keys.sample_log_prob)
 
-        new_log_prob = dist.log_prob(action)
+        new_log_prob = dist.log_prob(action).unsqueeze(-1)
         log_weight = new_log_prob - old_log_prob
 
         # KL approximation for monitoring
@@ -146,7 +146,7 @@ class GRPOContinuousLoss(LossModule):
             {
                 "loss_objective": loss,
                 "entropy": entropy,
-                "clip_ratio": (ratio<1-self.clip_epsilon).float().mean()
+                "clip_ratio": (ratio<1-self.clip_epsilon).float().mean(), ratio
             },[]
         )
 

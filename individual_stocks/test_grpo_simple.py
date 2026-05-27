@@ -16,8 +16,8 @@ device = torch.device("cpu")
 print(f"Device: {device}")
 
 # ── Hyperparams ──
-group_size = 16       # N parallel trajectories
-traj_length = 500     # steps per trajectory
+group_size = 8       # N parallel trajectories
+traj_length = 100     # steps per trajectory
 n_state = 3
 n_action = 1
 num_cells = 64
@@ -40,7 +40,7 @@ policy_module = ProbabilisticActor(
     return_log_prob=True,
 )
 
-loss_module = GRPOContinuousLoss(policy_module, clip_epsilon=0.2, entropy_bonus=True, beta=0.6)
+loss_module = GRPOContinuousLoss(policy_module, clip_epsilon=0.2, entropy_bonus=True, beta=0.08)
 optimizer = torch.optim.Adam(loss_module.parameters(), lr)
 
 # ── Environment ──
@@ -71,6 +71,10 @@ for iteration in range(num_iterations):
             
             action = td_out["action"]
             log_prob = td_out["action_log_prob"]
+            
+            # Ensure consistent shape [1, 1]
+            if log_prob.dim() < 2:
+                log_prob = log_prob.unsqueeze(-1)
             
             # Step environment — TanhNormal gives [1, 1], squeeze to [1]
             obs, reward, terminated, truncated, _ = env.step(action.squeeze().numpy().reshape(-1))
