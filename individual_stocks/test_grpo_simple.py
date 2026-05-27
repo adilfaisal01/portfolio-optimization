@@ -18,16 +18,16 @@ print(f"Device: {device}")
 # ── Hyperparams ──
 group_size = 8       # N parallel trajectories
 traj_length = 100     # steps per trajectory
-n_state = 3
-n_action = 1
+n_state = 17
+n_action = 6
 num_cells = 64
 lr = 3e-4
 num_iterations = 1000
 
 # ── Policy Network ──
 actor_net = nn.Sequential(
-    nn.LazyLinear(num_cells), nn.Tanh(),
-    nn.LazyLinear(num_cells), nn.Tanh(),
+    nn.LazyLinear(num_cells), nn.ReLU(),
+    nn.LazyLinear(num_cells), nn.ReLU(),
     nn.LazyLinear(2 * n_action),
     NormalParamExtractor(),
 )
@@ -40,11 +40,11 @@ policy_module = ProbabilisticActor(
     return_log_prob=True,
 )
 
-loss_module = GRPOContinuousLoss(policy_module, clip_epsilon=0.2, entropy_bonus=True, beta=0.08)
+loss_module = GRPOContinuousLoss(policy_module, clip_epsilon=0.05, entropy_bonus=True, beta=0.08,entropy_coeff=0.02)
 optimizer = torch.optim.Adam(loss_module.parameters(), lr)
 
 # ── Environment ──
-env = gym.make("Pendulum-v1")
+env = gym.make("HalfCheetah-v4")
 
 reward_log = []
 
