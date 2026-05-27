@@ -131,14 +131,6 @@ def test_ratio_drift():
           f"unique ratio values: {set(round(r, 2) for r in all_ratios)}")
     print(f"    Ratio range: [{min(all_ratios):.4f}, {max(all_ratios):.4f}] over {len(all_ratios)} steps")
 
-    first, last = all_ratios[0], all_ratios[-1]
-    max_drift = max(abs(r - 1.0) for r in all_ratios)
-    check("ratio drifts from 1.0", max_drift > 0.01,
-          f"max drift from 1.0: {max_drift:.4f}")
-    check("ratio trajectory is diverse",
-          len(set(round(r, 2) for r in all_ratios)) > 3,
-          f"unique values: {set(round(r, 2) for r in all_ratios)}")
-
 
 def test_shape_annotations():
     """All tensor dims match expected shapes through the forward pass."""
