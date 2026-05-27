@@ -124,9 +124,10 @@ class GRPOContinuousLoss(LossModule):
         # Unsqueeze to match old_log_prob shape [B, 1]
         new_log_prob = dist.log_prob(action).unsqueeze(-1)  # -> [B, 1]
         log_weight = new_log_prob - old_log_prob            # -> [B, 1]
+        kl_log_weight=old_log_prob-new_log_prob
 
         # KL approx: E[exp(log_weight) - 1 - log_weight]
-        kl_approx = (log_weight.exp() - 1 - log_weight).mean()  # scalar
+        kl_approx = (kl_log_weight.exp() - 1 - kl_log_weight).mean()  # scalar
 
         return dist, log_weight, kl_approx
 
