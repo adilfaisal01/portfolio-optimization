@@ -16,8 +16,8 @@ device = torch.device("cpu")
 print(f"Device: {device}")
 
 # ── Hyperparams ──
-group_size = 8       # N parallel trajectories
-traj_length = 100     # steps per trajectory
+group_size = 32      # N parallel trajectories
+traj_length = 200     # steps per trajectory
 n_state = 17
 n_action = 6
 num_cells = 64
