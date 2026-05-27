@@ -16,13 +16,13 @@ device = torch.device("cpu")
 print(f"Device: {device}")
 
 # ── Hyperparams ──
-group_size = 32      # N parallel trajectories
+group_size = 8      # N parallel trajectories
 traj_length = 200     # steps per trajectory
 n_state = 17
 n_action = 6
 num_cells = 64
 lr = 3e-4
-num_iterations = 1000
+num_iterations = 300
 
 # ── Policy Network ──
 actor_net = nn.Sequential(

@@ -112,7 +112,11 @@ class GRPOContinuousLoss(LossModule):
             log_weight: [B, 1] — log(pi_theta / pi_theta_old) for each transition
             kl_approx:  scalar — D_KL(pi_old || pi_theta) approximation
         """
-        dist = self.actor_network.get_dist(tensordict)  # batch_shape: [B]
+        # Load functional params into the module before computing current distribution.
+        # convert_to_functional() extracts params into actor_network_params (a TensorDict).
+        # The optimizer steps on those params, so we must copy them back before get_dist().
+        with self.actor_network_params.to_module(self.actor_network):
+            dist = self.actor_network.get_dist(tensordict)  # batch_shape: [B]
         action = tensordict.get(self._keys.action)      # -> [B, action_dim]
         old_log_prob = tensordict.get(self._keys.sample_log_prob)  # -> [B, 1]
 
