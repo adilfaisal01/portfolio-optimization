@@ -16,13 +16,13 @@ device = torch.device("cpu")
 print(f"Device: {device}")
 
 # ── Hyperparams ──
-group_size = 8      # N parallel trajectories
-traj_length = 200     # steps per trajectory
-n_state = 17
-n_action = 6
-num_cells = 64
+group_size = 6      # N parallel trajectories
+traj_length = 50     # steps per trajectory
+n_state = 3
+n_action = 1
+num_cells = 32
 lr = 3e-4
-num_iterations = 300
+num_iterations = 30
 
 # ── Policy Network ──
 actor_net = nn.Sequential(
@@ -44,7 +44,7 @@ loss_module = GRPOContinuousLoss(policy_module, clip_epsilon=0.05, entropy_bonus
 optimizer = torch.optim.Adam(loss_module.parameters(), lr)
 
 # ── Environment ──
-env = gym.make("HalfCheetah-v4")
+env = gym.make("Pendulum-v1")
 
 reward_log = []
 
