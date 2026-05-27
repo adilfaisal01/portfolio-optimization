@@ -126,7 +126,7 @@ class GRPOContinuousLoss(LossModule):
         log_weight = new_log_prob - old_log_prob            # -> [B, 1]
 
         # KL approx: E[exp(log_weight) - 1 - log_weight] = KL(pi_old || pi_theta)
-        kl_approx = (log_weight.exp() - 1 - log_weight).mean()  # scalar
+        kl_approx = (log_weight.exp() - 1 - log_weight)  # --> [B,1]
 
         return dist, log_weight, kl_approx
 
@@ -162,7 +162,7 @@ class GRPOContinuousLoss(LossModule):
                 loss = loss - self.entropy_coeff * entropy
             else:
                 entropy = torch.tensor(0.0)
-            loss = loss + self.beta * kl_approx
+            loss = loss + self.beta * kl_approx.mean()
 
         elif self.reduction == "sum":
             loss = loss.sum()  # scalar
@@ -171,9 +171,11 @@ class GRPOContinuousLoss(LossModule):
                 loss = loss - self.entropy_coeff * entropy
             else:
                 entropy = torch.tensor(0.0)
+            loss=loss+self.beta*kl_approx.sum()
 
         else:  # "none"
             entropy = torch.tensor(0.0)
+            loss=loss+self.beta*kl_approx
 
         # Monitor: fraction of ratios hitting the clip bounds
         clip_low = (ratio < 1 - self.clip_epsilon).float().mean()
@@ -182,11 +184,13 @@ class GRPOContinuousLoss(LossModule):
         return TensorDict(
             {
                 "loss_objective": loss,  # scalar
+                "entropy": entropy,  # scalar
+                "kl_divergence": kl_approx,  # [B, 1] or scalar
+                "clip_low": clip_low,  # scalar
+                "clip_high": clip_high,  # scalar
             },
             [],
-        ).set("entropy", entropy  # scalar
-        ).set("clip_low", clip_low  # scalar
-        ).set("clip_high", clip_high)  # scalar
+        )
 
     def set_keys(self, **kwargs) -> None:
         """Remap input keys (e.g. loss.set_keys(advantage='group_adv'))."""
