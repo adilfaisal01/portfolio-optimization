@@ -1,5 +1,0 @@
-[tool.pyright]
-pythonPath = "/home/adilfaisal01/.pyenv/versions/ML-DL/bin/python"
-typeCheckingMode = "strict"
-diagnosticMode = "workspace"
-useLibraryCodeForTypes = true
