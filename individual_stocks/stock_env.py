@@ -10,7 +10,7 @@ class Portfoliomarket(gym.Env):
         self.n_macro_indices=n_macro_indicators
         self.max_w=max_alloc
         self.start_cap=start_cap
-        self.data=DataExtractor(ticker_list=None,macro_indices=None)
+        self.data=DataExtractor(ticker_list=None, macro_indices=None)
     def step(self,u):
         pass
 
