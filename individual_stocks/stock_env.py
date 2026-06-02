@@ -9,9 +9,6 @@ class Portfoliomarket(gym.Env):
         self.macro_indices=n_macro_indicators
         self.max_w=max_alloc
         self.start_cap=start_cap
-
-    def _data_parser(self,dataset='sector_etf_clean_trainingset.parquet'):
-        self.xlk_returns=dataset[dataset['ticker']=='xlk']['log_return']
         
     def step(self,u):
         pass
