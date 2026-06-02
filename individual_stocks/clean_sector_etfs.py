@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 PARQUET = 'sector_etf_data.parquet'
-START = '2007-01-11'
+START = '2020-01-11'
 END   = '2025-12-31'
 
 print(f"=== Loading & cleaning sector ETFs ({START} to {END}) ===")
@@ -47,6 +47,6 @@ print(f"Any remaining NaN: {df[['log_return', 'hl_spread', 'RVOL']].isna().any()
 print(f"Tickers: {df['ticker'].nunique()}")
 print(f"Date range: {df['date'].min()} to {df['date'].max()}")
 
-out = 'sector_etf_clean.parquet'
+out = 'sector_etf_clean_testingset.parquet'
 df.to_parquet(out)
 print(f"Saved to {out}")

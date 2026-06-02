@@ -1,6 +1,22 @@
 import gymnasium as gym 
 import numpy as np
+import pandas as pd
+from gymnasium import spaces
 
 class Portfoliomarket(gym.Env):
-    def __init__(self,n_assets:int, n_macro_indicators:int ,max_alloc:) -> None:
+    def __init__(self,n_assets:int, n_macro_indicators:int ,max_alloc:float, start_cap:float,dataset) -> None:
+        self.n_assets=n_assets
+        self.macro_indices=n_macro_indicators
+        self.max_w=max_alloc
+        self.start_cap=start_cap
+        self.dataset=pd.read_parquet('sector_etf_clean_trainingset.parquet')
+        
+        
+    def step(self,u):
+        pass
+
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
+        return super().reset(seed=seed, options=options)
+
+    def reward
         
