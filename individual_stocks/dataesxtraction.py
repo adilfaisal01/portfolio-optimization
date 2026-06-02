@@ -5,13 +5,17 @@ xx=pd.read_parquet('sector_etf_clean_testingset.parquet')
 print(xx.columns)
 
 class DataExtractor:
-    def __init__(self, ticker,macro_indices,dataset:str='sector_etf_clean_trainingset.parquet'):
+    def __init__(self, ticker_list,macro_indices,dataset:str='sector_etf_clean_trainingset.parquet'):
         self.dataset_pframe=pd.read_parquet(dataset)
-        self.ticker=ticker
         if macro_indices is None:
             self.macro_indices=['GLD','USO','IYR','SHV','TIP']
         else:
             self.macro_indices=macro_indices
+
+        if ticker_list is None:
+            self.ticker_list=['XLK','XLF','XLE','XLV','XLI','XLP','XLY','XLU','XLB','VNQ','VOQ']
+        else:
+            self.ticker_list=ticker_list
 
     def get_macro(self):
         macro_data=self.dataset_pframe[self.dataset_pframe['ticker'].isin(self.macro_indices)]
@@ -21,5 +25,9 @@ class DataExtractor:
 
         return macro_logreturn, macro_spread, macro_rvol
 
-    def 
+    def get_assets(self):
+        etf_data=self.dataset_pframe[self.dataset_pframe_pframe['ticker'].isin(self.ticker_list)]
+        etf_longrun=etf_data.pivot_table()
+        
+        
 
