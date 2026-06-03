@@ -11,10 +11,13 @@ class Portfoliomarket(gym.Env):
         self.max_w=max_alloc
         self.start_cap=start_cap
         self.data=DataExtractor(ticker_list=None, macro_indices=None)
-    def step(self,u):
+    def _get_data(self):
         self.macro_lr, self.macro_sp,self.macro_rvol= self.data.get_macro()
         self.etf_lr, self.etf_sp, self.etf_rvol= self.data.get_assets()
-        vix_data
+        self.vix_data=self.data.get_vix(vix_fairweather=20)
+
+    def step(self):
+        pass
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
         return super().reset(seed=seed, options=options)
