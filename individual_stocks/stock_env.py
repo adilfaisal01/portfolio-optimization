@@ -12,10 +12,10 @@ class Portfoliomarket(gym.Env):
         self.start_cap=start_cap
         self.data=DataExtractor(ticker_list=None, macro_indices=None)
     def step(self,u):
-        pass
+        macro_lr, macro_sp,ma
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
         return super().reset(seed=seed, options=options)
 
-    def reward
+    def reward(self):
         
