@@ -27,7 +27,16 @@ ema_encoder.to(dev)
 for p in ema_encoder.parameters():
     p.requires_grad=False
 
-optimizer=torch.optimiz
+# define which parameters need to be optimized--> encoder and predictor
+params_encoder=encoder.parameters()
+params_predictor=predictor.parameters()
+all_params_opt=[params_encoder, params_predictor]
+optimizer= torch.optim.AdamW(all_params_opt, lr=3e-4,weight_decay=1e-6)
+
+#EMA scheduling definition
+ema_scheduler= 
+
+
 
 
 
