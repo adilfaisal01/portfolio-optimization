@@ -85,7 +85,7 @@ for epoch in range(trainingsetup.num_epochs):
             target_values= apply_mask(target_values,masks)
 
         tokens=encoder(window,non_masks)
-        pred=predictor(tokens, masks,non_masks)
+        pred=predictor(tokens,masks,non_masks)
         loss=loss_pred(pred,target_values)
         loss.backward()
         optimizer.step()
