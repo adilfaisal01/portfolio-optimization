@@ -7,7 +7,7 @@
 from torch.utils.data import DataLoader
 from .data_class import CSVDataLoader, EvaluationDataLoader
 import pandas as pd
-import gzip
+import gzip 
 import numpy as np
 
 import torch
