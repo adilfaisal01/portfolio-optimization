@@ -6,6 +6,9 @@ import torch
 from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from torch.utils.data import DataLoader
 from dataclasses import dataclass
+import torch.nn.functional as F
+from src.models.utils.mask_utils import apply_mask
+
 
 @dataclass
 class Training_configuration:
@@ -14,6 +17,7 @@ class Training_configuration:
     weight_decay:float=0
     ema_momentum:float=0.998
     num_epochs:int=100
+    model_path:str="workspace/outputs"
     
 trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,15 +47,45 @@ params_predictor=predictor.parameters()
 all_params_opt=[params_encoder, params_predictor]
 optimizer= torch.optim.AdamW(all_params_opt, lr=trainingsetup.lr,weight_decay=trainingsetup.weight_decay)
 
+def loss_pred(pred, target_ema):
+    loss = 0.0
+    for pred_i, target_ema_i in zip(pred, target_ema):
+        loss = loss + torch.mean(torch.abs(pred_i - target_ema_i))
+    loss /= len(pred)
+    return loss
+
+def save_model(model, epoch):
+    model.save(model.state_to_dict())
+    
+
 #EMA scheduling definition
 for i in range(int(trainingsetup.num_epochs)+1):
     ema_scheduler=trainingsetup.ema_momentum+i*(1-trainingsetup.ema_momentum)/(trainingsetup.num_epochs)
 
+total_loss=0.0
 ## trainingloop
 for epoch in range(trainingsetup.num_epochs):
     m=next(ema_scheduler)
-    
-    
+    for window, masks, non_masks in data_loaded:
+        window=window.to(dev)
+        masks=masks.to(dev)
+        non_masks=non_masks.to(dev)
+        with torch.no_grad():
+            target_values=ema_encoder(window)
+            target_values=F.layer_norm(target_values, (target_values.size(-1),))
+            target_values= apply_mask(target_values,masks)
 
+        tokens=encoder(window,non_masks)
+        pred=predictor(window, masks,non_masks)
+        loss=loss_pred(pred,target_values)
+        loss.backward()
+        optimizer.step()
 
-
+        # update the EMA encoder
+        with torch.no_grad():
+            for param_q, param_k in zip(
+                encoder.parameters(), ema_encoder.parameters()
+            ):
+                param_k.data.mul_(m).add_((1.0 - m) * param_q.detach().data)
+        total_loss+=loss
+        total_loss=total_loss/trainingsetup.batch_size
