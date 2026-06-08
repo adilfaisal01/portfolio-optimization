@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from dataextraction import DataExtractor
+from .dataextraction import DataExtractor
 import torch
 import random
 
@@ -48,10 +48,6 @@ if __name__ == "__main__":
     print(f"mask indices:       {mask}")
     print(f"non-mask indices:   {non_mask.shape}")
     print(f"total windows:      {len(ds)}")
-
-        
-            
-           
         
     
     
