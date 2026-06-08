@@ -5,12 +5,22 @@ import copy
 import torch
 from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from torch.utils.data import DataLoader
+from dataclasses import dataclass
 
+@dataclass
+class Training_configuration:
+    batch_size=32
+    lr:float=3e-4
+    weight_decay:float=0
+    ema_momentum:float=0.998
+    num_epochs:int=100
+    
+trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## loading the dataset
 dataset=StockMarketJEPADataset(mask_ratio=0.6,num_patches=20,vix_fairweather=20,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
-data_loaded= DataLoader(dataset,batch_size=1,shuffle=True)
+data_loaded= DataLoader(dataset,batch_size=trainingsetup.batch_size,shuffle=True)
 
 # print(len(data_loaded.dataset[0][0]))
 
@@ -31,12 +41,17 @@ for p in ema_encoder.parameters():
 params_encoder=encoder.parameters()
 params_predictor=predictor.parameters()
 all_params_opt=[params_encoder, params_predictor]
-optimizer= torch.optim.AdamW(all_params_opt, lr=3e-4,weight_decay=1e-6)
+optimizer= torch.optim.AdamW(all_params_opt, lr=trainingsetup.lr,weight_decay=trainingsetup.weight_decay)
 
 #EMA scheduling definition
-ema_scheduler= 
+for i in range(int(trainingsetup.num_epochs)+1):
+    ema_scheduler=trainingsetup.ema_momentum+i*(1-trainingsetup.ema_momentum)/(trainingsetup.num_epochs)
 
-
+## trainingloop
+for epoch in range(trainingsetup.num_epochs):
+    m=next(ema_scheduler)
+    
+    
 
 
 
