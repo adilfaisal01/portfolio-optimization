@@ -9,21 +9,24 @@ from dataclasses import dataclass
 import torch.nn.functional as F
 from src.models.utils.mask_utils import apply_mask
 
-
 @dataclass
 class Training_configuration:
-    batch_size=32
+    batch_size=1
     lr:float=3e-4
     weight_decay:float=0
     ema_momentum:float=0.998
-    num_epochs:int=100
+    num_epochs:int=1
     model_path:str="workspace/outputs"
+    save_interval:int=10
+
+# @dataclass
+# cl
     
 trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## loading the dataset
-dataset=StockMarketJEPADataset(mask_ratio=0.6,num_patches=20,vix_fairweather=20,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
+dataset=StockMarketJEPADataset(mask_ratio=0.2,num_patches=20,vix_fairweather=20,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
 data_loaded= DataLoader(dataset,batch_size=trainingsetup.batch_size,shuffle=True)
 
 # print(len(data_loaded.dataset[0][0]))
@@ -42,9 +45,9 @@ for p in ema_encoder.parameters():
     p.requires_grad=False
 
 # define which parameters need to be optimized--> encoder and predictor
-params_encoder=encoder.parameters()
-params_predictor=predictor.parameters()
-all_params_opt=[params_encoder, params_predictor]
+params_encoder=list(encoder.parameters())
+params_predictor=list(predictor.parameters())
+all_params_opt=params_encoder+params_predictor
 optimizer= torch.optim.AdamW(all_params_opt, lr=trainingsetup.lr,weight_decay=trainingsetup.weight_decay)
 
 def loss_pred(pred, target_ema):
@@ -55,18 +58,24 @@ def loss_pred(pred, target_ema):
     return loss
 
 def save_model(model, epoch):
-    model.save(model.state_to_dict())
+    save_path=trainingsetup.model_path+ "_epoch_" + str(epoch)+".pt"
+    try:
+        torch.save(model.state_dict(), save_path)
+    except:
+        print('lmao bruh, failure to save')
     
 
 #EMA scheduling definition
-for i in range(int(trainingsetup.num_epochs)+1):
-    ema_scheduler=trainingsetup.ema_momentum+i*(1-trainingsetup.ema_momentum)/(trainingsetup.num_epochs)
+ema_scheduler=(trainingsetup.ema_momentum+
+    i*(1-trainingsetup.ema_momentum)/(trainingsetup.num_epochs)
+    for i in range(int(trainingsetup.num_epochs+1)))
 
-total_loss=0.0
 ## trainingloop
 for epoch in range(trainingsetup.num_epochs):
     m=next(ema_scheduler)
+    total_loss=0.0
     for window, masks, non_masks in data_loaded:
+        optimizer.zero_grad()
         window=window.to(dev)
         masks=masks.to(dev)
         non_masks=non_masks.to(dev)
@@ -76,7 +85,7 @@ for epoch in range(trainingsetup.num_epochs):
             target_values= apply_mask(target_values,masks)
 
         tokens=encoder(window,non_masks)
-        pred=predictor(window, masks,non_masks)
+        pred=predictor(tokens, masks,non_masks)
         loss=loss_pred(pred,target_values)
         loss.backward()
         optimizer.step()
@@ -87,5 +96,9 @@ for epoch in range(trainingsetup.num_epochs):
                 encoder.parameters(), ema_encoder.parameters()
             ):
                 param_k.data.mul_(m).add_((1.0 - m) * param_q.detach().data)
-        total_loss+=loss
-        total_loss=total_loss/trainingsetup.batch_size
+            total_loss+=loss
+    avg_loss=total_loss/len(data_loaded)
+    print(f"epoch {epoch}, JEPA loss: {avg_loss: .4f}")
+
+    if (epoch+1)%trainingsetup.save_interval==0:
+        save_model(encoder,(epoch+1))
