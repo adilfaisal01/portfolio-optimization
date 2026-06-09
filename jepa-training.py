@@ -5,36 +5,81 @@ import copy
 import torch
 from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from torch.utils.data import DataLoader
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 import torch.nn.functional as F
 from src.models.utils.mask_utils import apply_mask
 
+
+def _init_from_env(obj, prefix: str) -> None:
+    for field_name in obj.__dataclass_fields__:
+        env_val = os.environ.get(f"{prefix}{field_name.upper()}")
+        if env_val is not None:
+            field_type = type(getattr(obj, field_name))
+            try:
+                setattr(obj, field_name, field_type(env_val))
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Cannot convert env var {prefix}{field_name.upper()}={env_val!r} "
+                    f"to {field_type.__name__}"
+                )
+
+
 @dataclass
 class Training_configuration:
-    batch_size=1
-    lr:float=3e-4
-    weight_decay:float=0
-    ema_momentum:float=0.998
-    num_epochs:int=1
-    model_path:str="workspace/outputs"
-    save_interval:int=10
+    batch_size: int = 1
+    lr: float = 3e-4
+    weight_decay: float = 0
+    ema_momentum: float = 0.998
+    num_epochs: int = 3
+    model_path: str = "workspace/outputs"
+    save_interval: int = 10
 
-# @dataclass
-# cl
-    
+    def __post_init__(self):
+        _init_from_env(self, "TRAIN_")
+
+
+@dataclass
+class JEPA_parameters:
+    mask_ratio: float = 0.2
+    num_patches: int = 20
+    vix_fairweather: int = 20
+    predictor_embed_dim: int = 512
+    encoder_embed_dim: int = 256
+    kernel_size: int = 49
+    dim_in_encoder: int = 49
+    num_layers_encoder: int = 4
+    num_layers_predictor: int = 2
+    nhead_encoder: int = 8
+    n_head_predictor: int = 2
+
+    def __post_init__(self):
+        _init_from_env(self, "JEPA_")
+
+jepa_setup=JEPA_parameters()    
 trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## loading the dataset
-dataset=StockMarketJEPADataset(mask_ratio=0.2,num_patches=20,vix_fairweather=20,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
+dataset=StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio,num_patches=jepa_setup.num_patches,vix_fairweather=jepa_setup.vix_fairweather,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
 data_loaded= DataLoader(dataset,batch_size=trainingsetup.batch_size,shuffle=True)
 
 # print(len(data_loaded.dataset[0][0]))
 
 # ## setting up the definitions of the NNs
-encoder= Encoder(dim_in=49,num_patches=20,kernel_size=49,embed_dim=256,embed_bias=True,nhead=8,jepa=True,num_layers=4)
+encoder= Encoder(dim_in=jepa_setup.dim_in_encoder,
+    num_patches=jepa_setup.num_patches,
+    kernel_size=jepa_setup.kernel_size,
+    embed_dim=jepa_setup.encoder_embed_dim,
+    embed_bias=True,nhead=jepa_setup.nhead_encoder,
+    jepa=True,
+    num_layers=jepa_setup.num_layers_encoder)
 ema_encoder= copy.deepcopy(encoder)
-predictor= Predictor(num_patches=20,num_layers=2,nhead=4,predictor_embed_dim=512,encoder_embed_dim=256)
+predictor= Predictor(num_patches=20,
+    num_layers=jepa_setup.num_layers_predictor,
+    nhead=jepa_setup.n_head_predictor,
+    predictor_embed_dim=jepa_setup.predictor_embed_dim,
+    encoder_embed_dim=jepa_setup.encoder_embed_dim)
 
 ## move all networks to the correct device
 encoder.to(dev)
