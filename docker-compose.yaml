@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  jepa-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: jepa-trainer
+    network_mode: "host"
+
+    environment:
+      TRAIN_BATCH_SIZE: ${TRAIN_BATCH_SIZE:-1}
+      TRAIN_LR: ${TRAIN_LR:-3e-4}
+      TRAIN_WEIGHT_DECAY: ${TRAIN_WEIGHT_DECAY:-0}
+      TRAIN_EMA_MOMENTUM: ${TRAIN_EMA_MOMENTUM:-0.998}
+      TRAIN_NUM_EPOCHS: ${TRAIN_NUM_EPOCHS:-3}
+      TRAIN_MODEL_PATH: ${TRAIN_MODEL_PATH:-/workspace/outputs/output}
+      TRAIN_SAVE_INTERVAL: ${TRAIN_SAVE_INTERVAL:-10}
+
+      JEPA_MASK_RATIO: ${JEPA_MASK_RATIO:-0.2}
+      JEPA_NUM_PATCHES: ${JEPA_NUM_PATCHES:-20}
+      JEPA_VIX_FAIRWEATHER: ${JEPA_VIX_FAIRWEATHER:-20}
+      JEPA_PREDICTOR_EMBED_DIM: ${JEPA_PREDICTOR_EMBED_DIM:-512}
+      JEPA_ENCODER_EMBED_DIM: ${JEPA_ENCODER_EMBED_DIM:-256}
+      JEPA_KERNEL_SIZE: ${JEPA_KERNEL_SIZE:-49}
+      JEPA_DIM_IN_ENCODER: ${JEPA_DIM_IN_ENCODER:-49}
+      JEPA_NUM_LAYERS_ENCODER: ${JEPA_NUM_LAYERS_ENCODER:-4}
+      JEPA_NUM_LAYERS_PREDICTOR: ${JEPA_NUM_LAYERS_PREDICTOR:-2}
+      JEPA_NHEAD_ENCODER: ${JEPA_NHEAD_ENCODER:-8}
+      JEPA_N_HEAD_PREDICTOR: ${JEPA_N_HEAD_PREDICTOR:-2}
+
+      NVIDIA_DRIVER_CAPABILITIES: all
+      NVIDIA_VISIBLE_DEVICES: all
+      OMNI_KIT_ALLOW_ROOT: 1
+      TERM: xterm
+      OUTPUT_DIR: /workspace/outputs
+      DATASET_DIR: /portfolio-opt/individual_stocks/parquet_data
+      PYTHONPATH: /portfolio-opt
+
+    volumes:
+      - ./workspace:/workspace:rw
+      - ./individual_stocks/parquet_data:/portfolio-opt/individual_stocks/parquet_data:ro
+
+    runtime: nvidia
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    stdin_open: true
+    tty: true
+
+    entrypoint: ["/bin/bash", "/portfolio-opt/entrypoint.sh"]

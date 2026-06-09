@@ -1,0 +1,17 @@
+__pycache__/
+*.py[codz]
+*$py.class
+*.csv
+*.parquet
+*.nc
+*.so
+.git/
+.gitignore
+.ipynb_checkpoints/
+.pytest_cache/
+.zed/
+workspace/
+outputs/
+checkpoints/
+*.pt
+*.pth
