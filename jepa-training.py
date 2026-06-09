@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import os
 from dataclasses import dataclass, field
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from src.models.utils.mask_utils import apply_mask
 
 
@@ -33,7 +34,7 @@ class Training_configuration:
     ema_momentum: float = 0.998
     num_epochs: int = 3
     model_path: str = "workspace/outputs"
-    save_interval: int = 10
+    save_interval: int = 1
 
     def __post_init__(self):
         _init_from_env(self, "TRAIN_")
@@ -60,9 +61,13 @@ jepa_setup=JEPA_parameters()
 trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-## loading the dataset
+## loading the training dataset
 dataset=StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio,num_patches=jepa_setup.num_patches,vix_fairweather=jepa_setup.vix_fairweather,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
 data_loaded= DataLoader(dataset,batch_size=trainingsetup.batch_size,shuffle=True)
+
+VAL_PARQUET_PATH = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
+val_dataset = StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio, num_patches=jepa_setup.num_patches, vix_fairweather=jepa_setup.vix_fairweather, parquet_path=VAL_PARQUET_PATH)
+val_loader = DataLoader(val_dataset, batch_size=trainingsetup.batch_size, shuffle=False)
 
 # print(len(data_loaded.dataset[0][0]))
 
@@ -104,11 +109,58 @@ def loss_pred(pred, target_ema):
 
 def save_model(model, epoch):
     save_path=trainingsetup.model_path+ "_epoch_" + str(epoch)+".pt"
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     try:
         torch.save(model.state_dict(), save_path)
     except:
         print('lmao bruh, failure to save')
-    
+
+@torch.no_grad()
+def evaluate(encoder, ema_encoder, predictor, loader):
+    encoder.eval()
+    predictor.eval()
+    ema_encoder.eval()
+    total = 0.0
+    for window, masks, non_masks in loader:
+        window = window.to(dev)
+        masks = masks.to(dev)
+        non_masks = non_masks.to(dev)
+        targets = ema_encoder(window)
+        targets = F.layer_norm(targets, (targets.size(-1),))
+        targets = apply_mask(targets, masks)
+        tokens = encoder(window, non_masks)
+        pred = predictor(tokens, masks, non_masks)
+        total += loss_pred(pred, targets).item()
+    encoder.train()
+    predictor.train()
+    return total / len(loader)
+
+def plot_loss_curve(train_losses, val_losses, val_epochs, save_dir):
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(1, len(train_losses) + 1), train_losses, label='train', linewidth=1.5)
+    if val_losses:
+        plt.plot(val_epochs, val_losses, 'ro-', label='val', markersize=6, linewidth=1.5)
+    best_val = min(val_losses) if val_losses else None
+    if best_val is not None:
+        best_ep = val_epochs[val_losses.index(best_val)]
+        plt.axhline(y=best_val, color='red', linestyle='--', alpha=0.5)
+        plt.annotate(f'best val: {best_val:.4f} @ epoch {best_ep}',
+                     xy=(best_ep, best_val), xytext=(best_ep + 0.5, best_val * 1.05),
+                     fontsize=8, color='red')
+    plt.xlabel('Epoch')
+    plt.ylabel('JEPA Loss')
+    plt.title('Training & Validation Loss')
+    plt.legend()
+    plt.grid(True)
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, 'loss_curve.png')
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+    print(f"Loss curve saved to {save_path}")
+
+epoch_losses = []
+val_losses = []
+val_epochs = []
 
 #EMA scheduling definition
 ema_scheduler=(trainingsetup.ema_momentum+
@@ -116,6 +168,7 @@ ema_scheduler=(trainingsetup.ema_momentum+
     for i in range(int(trainingsetup.num_epochs+1)))
 
 ## trainingloop
+output_dir = os.path.dirname(trainingsetup.model_path) or "."
 for epoch in range(trainingsetup.num_epochs):
     m=next(ema_scheduler)
     total_loss=0.0
@@ -143,7 +196,16 @@ for epoch in range(trainingsetup.num_epochs):
                 param_k.data.mul_(m).add_((1.0 - m) * param_q.detach().data)
             total_loss+=loss
     avg_loss=total_loss/len(data_loaded)
-    print(f"epoch {epoch}, JEPA loss: {avg_loss: .4f}")
+    epoch_losses.append(avg_loss.item())
 
     if (epoch+1)%trainingsetup.save_interval==0:
+        val_loss = evaluate(encoder, ema_encoder, predictor, val_loader)
+        val_losses.append(val_loss)
+        val_epochs.append(epoch + 1)
         save_model(encoder,(epoch+1))
+        print(f"epoch {epoch+1}, train loss: {avg_loss:.4f}  |  val loss: {val_loss:.4f}  |  checkpoint saved")
+        plot_loss_curve(epoch_losses, val_losses, val_epochs, output_dir)
+    else:
+        print(f"epoch {epoch+1}, train loss: {avg_loss:.4f}")
+
+plot_loss_curve(epoch_losses, val_losses, val_epochs, output_dir)
