@@ -4,7 +4,7 @@ set -e
 export TRAIN_LR=3e-4
 export TRAIN_NUM_EPOCHS=50
 export TRAIN_SAVE_INTERVAL=5
-export TRAIN_MODEL_PATH="${TRAIN_MODEL_PATH:-/workspace/outputs/model}"
+export TRAIN_MODEL_PATH="/workspace/outputs/jepa_model"
 export JEPA_VIX_FAIRWEATHER=20
 export JEPA_NUM_PATCHES=20
 export JEPA_DIM_IN_ENCODER=49

@@ -22,7 +22,7 @@ from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from individual_stocks.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
-MODEL_PATH    = "jepa-model/model_epoch_20.pt"
+MODEL_PATH    = "jepa-model/model_epoch_50.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis"
@@ -207,8 +207,8 @@ all_features = pd.concat([
 data_np = all_features.values.astype(np.float32)
 print(f"Full feature matrix: {data_np.shape} (days x 49)")
 
-xlk_col = all_features.columns.get_loc(PROBE_TICKER)
-xlk_returns_aligned = all_features[PROBE_TICKER].values.astype(np.float32)
+xlk_returns_aligned = etf_lr.loc[all_features.index, PROBE_TICKER].values.astype(np.float32)
+xlk_col = etf_lr.columns.get_loc(PROBE_TICKER)
 
 windows_49, labels_sliding = [], []
 for i in range(len(data_np) - ENC_NUM_PATCHES - 1):
