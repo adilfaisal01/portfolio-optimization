@@ -15,7 +15,7 @@ from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from individual_stocks.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
-MODEL_PATH    = "jepa-model/model_epoch_50.pt"
+MODEL_PATH    = "jepa-model/model_4_epoch_50.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis/iteration-4"
@@ -26,7 +26,7 @@ NUM_PROBE_EPOCHS = 50
 ENC_DIM_IN        = 49
 ENC_NUM_PATCHES   = 20
 ENC_KERNEL_SIZE   = 49
-ENC_EMBED_DIM     = 256
+ENC_EMBED_DIM     = 64
 ENC_NHEAD         = 8
 ENC_NUM_LAYERS    = 4
 
@@ -78,14 +78,66 @@ test_dataset = StockMarketJEPADataset(
 print(f"Train windows (non-overlapping): {len(train_dataset)}")
 print(f"Test windows (non-overlapping):  {len(test_dataset)}")
 
-loader_train_data=DataLoader(dataset=train_dataset, batch_size=1,shuffle=False)
-print(loader_train_data[0])
+loader_train_data=DataLoader(dataset=test_dataset, batch_size=1,shuffle=False)    
+#vic-reg evaluation--> used Bardes, Ponce, LeCun ICLR 2022
 
-#vic-reg evaluation
+def vicreg_eval(z:torch.Tensor, gamma=1.0, epsilon:float=1e-5):
+     N,D= z.shape #N: batch_size, D: dimension of the representations
+     # variance --> V
+     std= torch.sqrt(z.var(dim=0)+epsilon)
+     variance_loss= torch.mean(torch.relu(gamma-std))
+     #covariance --> C
+     center_z= z-z.mean(dim=0)
+     covar= (center_z.T@center_z)/(N-1)
+     diagonal_covar= covar*torch.eye(D)
+     off_diag_covar= covar-diagonal_covar
+     covar_loss=(off_diag_covar**2).sum()/D
+     # SVD breakdown
+     u,s,vh= torch.linalg.svd(center_z, full_matrices= False)
+     p= s/s.sum()
+     effective_rank = torch.exp(-torch.sum(p * torch.log(p + 1e-10)))
 
-# def vicreg_test(z:torch.Tensor, gamma=1.0, epsilon:float=1e-5):
-#     N,D= z.shape
-#     # variance--> V
-#     std= torch.sqrt(torch.var(z))  
-    
-    
+     ## max auto corr (off diagonal)    
+     corr=covar/(torch.outer(std,std)+epsilon)
+     max_corr = corr[~torch.eye(D, dtype=torch.bool)].abs().max()
+
+     return {
+             'variance_loss': variance_loss.item(),
+             'covariance_loss': covar_loss.item(),
+             'mean_std': std.mean().item(),
+             'min_std': std.min().item(),
+             'effective_rank': effective_rank.item(),
+             'max_corr': max_corr.item(),
+
+      }
+
+## inference--> collect all the embeddings then concat then for vicreg evaluation
+embedds_all=[]
+for batch in loader_train_data:
+    x=batch[0].to(DEVICE)
+    with torch.no_grad():
+        z=encoder(x)
+    embedds_all.append(z)
+embedds_all=torch.cat(embedds_all, dim=0)
+print(embedds_all.shape)
+
+results=[]
+#day by day breakdown for vicreg loss
+for t in range(embedds_all.shape[1]):
+    z_t=embedds_all[:,t,:] ##[batch_size, dimensions]
+    m=vicreg_eval(z_t)
+    results.append(m)
+    print(f"{t:4d}  {m['variance_loss']:>9}  {m['covariance_loss']:>9}  "
+          f"{m['mean_std']:>8}  {m['min_std']:>7}  {m['effective_rank']:>8}  {m['max_corr']:>8}")
+
+
+for k in results[0]:
+    vals = [r[k] for r in results]
+    print(f"  {k:20s}:  mean={np.mean(vals):>8.4f}  min={np.min(vals):>8.4f}  max={np.max(vals):>8.4f}")
+
+print()
+
+# Pass / Fail
+avg_var_loss = np.mean([r['variance_loss'] for r in results])
+avg_cov_loss = np.mean([r['covariance_loss'] for r in results])
+avg_eff_rank = np.mean([r['effective_rank'] for r in results])
