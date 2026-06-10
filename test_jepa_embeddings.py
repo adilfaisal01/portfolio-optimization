@@ -22,10 +22,10 @@ from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from individual_stocks.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
-MODEL_PATH    = "jepa-model/jepa_model_epoch_10.pt"
+MODEL_PATH    = "jepa-model/model_3_epoch_50.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
-OUTPUT_DIR    = "jepa-model/analysis/iteration-2"
+OUTPUT_DIR    = "jepa-model/analysis/iteration-3"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 PROBE_TICKER  = "XLK"
 NUM_PROBE_EPOCHS = 50
@@ -33,7 +33,7 @@ NUM_PROBE_EPOCHS = 50
 ENC_DIM_IN        = 49
 ENC_NUM_PATCHES   = 20
 ENC_KERNEL_SIZE   = 49
-ENC_EMBED_DIM     = 256
+ENC_EMBED_DIM     = 64
 ENC_NHEAD         = 8
 ENC_NUM_LAYERS    = 4
 

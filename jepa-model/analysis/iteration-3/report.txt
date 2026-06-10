@@ -1,0 +1,22 @@
+JEPA Embedding Evaluation Report
+========================================
+Model: jepa-model/model_3_epoch_50.pt
+
+--- Embedding Structure ---
+  Mean pairwise cos (train): 0.9983  +/- 0.0022
+  Mean pairwise cos (test):  0.9982  +/- 0.0025
+  Effective dims (90% var):  3 / 64
+  Effective dims (95% var):  6 / 64
+  Mean shift train->test:    0.0319
+  Cosine verdict:            WARNING: >0.95 similarity -- likely representation collapse
+  PCA verdict:               WARNING: 90% variance in <=3 dims -- likely rank collapse
+
+--- Linear Probe ---
+  Probe ticker:              XLK
+  Majority baseline acc:     0.545
+  JEPA probe best val acc:   0.570
+  Raw returns probe acc:     0.570
+  Probe verdict:             WEAK: slightly better than majority baseline
+
+FINAL VERDICT: FAIL: Possible collapse or no detectable market signal. Check training.
+========================================
