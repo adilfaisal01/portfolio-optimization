@@ -12,10 +12,10 @@ Model: jepa-model/model_4_epoch_50.pt
   PCA verdict:               OK: >3 effective dimensions with real structure
 
 --- Linear Probe ---
-  Probe ticker:              XLK
-  Majority baseline acc:     0.545
-  JEPA probe best val acc:   0.570
-  Raw returns probe acc:     0.570
+  Probe ticker:              VNQ
+  Majority baseline acc:     0.526
+  JEPA probe best val acc:   0.544
+  Raw returns probe acc:     0.544
   Probe verdict:             WEAK: slightly better than majority baseline
 
 FINAL VERDICT: FAIL: Possible collapse or no detectable market signal. Check training.

@@ -27,7 +27,7 @@ TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.par
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis/iteration-4"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
-PROBE_TICKER  = "XLK"
+PROBE_TICKER  = "VNQ"
 NUM_PROBE_EPOCHS = 50
 
 ENC_DIM_IN        = 49
