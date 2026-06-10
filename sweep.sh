@@ -4,12 +4,12 @@ set -e
 export TRAIN_LR=3e-4
 export TRAIN_NUM_EPOCHS=50
 export TRAIN_SAVE_INTERVAL=5
-export TRAIN_MODEL_PATH="/workspace/outputs/jepa_model/model_3"
+export TRAIN_MODEL_PATH="/workspace/outputs/jepa_model/model_4"
 export JEPA_VIX_FAIRWEATHER=20
 export JEPA_NUM_PATCHES=20
 export JEPA_DIM_IN_ENCODER=49
 export JEPA_KERNEL_SIZE=49
-export JEPA_MASK_RATIO=0.2
+export JEPA_MASK_RATIO=0.7
 export JEPA_ENCODER_EMBED_DIM=64
 export JEPA_NHEAD_ENCODER=8
 export JEPA_PREDICTOR_EMBED_DIM=128
