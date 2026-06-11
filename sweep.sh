@@ -2,9 +2,9 @@
 set -e
 
 export TRAIN_LR=3e-5
-export TRAIN_NUM_EPOCHS=1000
+export TRAIN_NUM_EPOCHS=2000
 export TRAIN_SAVE_INTERVAL=10
-export TRAIN_MODEL_PATH="/workspace/outputs/jepa_model_8/model"
+export TRAIN_MODEL_PATH="/workspace/outputs/jepa_model_10/model"
 export JEPA_VIX_FAIRWEATHER=20
 export JEPA_NUM_PATCHES=20
 export JEPA_DIM_IN_ENCODER=49
@@ -19,7 +19,7 @@ export JEPA_NUM_LAYERS_PREDICTOR=2
 export TRAIN_BATCH_SIZE=16
 export TRAIN_EMA_MOMENTUM=0.998
 export TRAIN_LAMBDA_V=2
-export TRAIN_LAMBDA_CV=2
+export TRAIN_LAMBDA_CV=2.1
 
 mkdir -p /workspace/outputs
 
