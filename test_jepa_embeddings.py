@@ -15,10 +15,10 @@ from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from individual_stocks.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
-MODEL_PATH    = "jepa-model/model_4_epoch_50.pt"
+MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
-OUTPUT_DIR    = "jepa-model/analysis/iteration-4"
+OUTPUT_DIR    = "jepa-model/analysis/iteration-10"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 PROBE_TICKER  = "VNQ"
 NUM_PROBE_EPOCHS = 50
@@ -68,11 +68,11 @@ print(f"SECTION 1: Embedding Sanity Check")
 print(f"{'═' * 60}")
 
 train_dataset = StockMarketJEPADataset(
-    mask_ratio=0.2, num_patches=20, vix_fairweather=20,
+    mask_ratio=0.7, num_patches=20, vix_fairweather=20,
     parquet_path=TRAIN_PARQUET,
 )
 test_dataset = StockMarketJEPADataset(
-    mask_ratio=0.2, num_patches=20, vix_fairweather=20,
+    mask_ratio=0.7, num_patches=20, vix_fairweather=20,
     parquet_path=TEST_PARQUET,
 )
 print(f"Train windows (non-overlapping): {len(train_dataset)}")
