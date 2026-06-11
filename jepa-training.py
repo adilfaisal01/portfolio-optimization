@@ -126,7 +126,7 @@ def vicreg_eval(z:torch.Tensor, gamma=1.0, epsilon:float=1e-5):
      #covariance --> C
      center_z= z-z.mean(dim=0)
      covar= (center_z.T@center_z)/(N-1)
-     diagonal_covar= covar*torch.eye(D)
+     diagonal_covar= covar*torch.eye(D,device=covar.device)
      off_diag_covar= covar-diagonal_covar
      covar_loss=(off_diag_covar**2).sum()/D
      # SVD breakdown
@@ -164,7 +164,7 @@ def evaluate(encoder, ema_encoder, predictor, loader):
         non_masks = non_masks.to(dev)
         targets = ema_encoder(window)
         targets = F.layer_norm(targets, (targets.size(-1),))
-        targets= F.normalize(targets, dim=-1)
+        # targets= F.normalize(targets, dim=-1)
         targets = apply_mask(targets, masks)
         tokens = encoder(window, non_masks)
         pred = predictor(tokens, masks, non_masks)
@@ -265,7 +265,7 @@ for epoch in range(trainingsetup.num_epochs):
         with torch.no_grad():
             target_values=ema_encoder(window)
             target_values=F.layer_norm(target_values, (target_values.size(-1),))
-            target_values=F.normalize(target_values,dim=-1)
+            #target_values=F.normalize(target_values,dim=-1)
             target_values= apply_mask(target_values,masks)
 
         tokens=encoder(window,non_masks)
