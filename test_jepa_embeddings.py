@@ -18,7 +18,7 @@ from individual_stocks.dataextraction import DataExtractor
 MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
-OUTPUT_DIR    = "jepa-model/analysis/iteration-10"
+OUTPUT_DIR    = "jepa-model/analysis/iteration-1"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 PROBE_TICKER  = "VNQ"
 NUM_PROBE_EPOCHS = 50
@@ -115,8 +115,9 @@ def vicreg_eval(z:torch.Tensor, gamma=1.0, epsilon:float=1e-5):
 embedds_all=[]
 for batch in loader_train_data:
     x=batch[0].to(DEVICE)
+    non_masks=batch[2].to(DEVICE)
     with torch.no_grad():
-        z=encoder(x)
+        z=encoder(x,non_masks)
     embedds_all.append(z)
 embedds_all=torch.cat(embedds_all, dim=0)
 print(embedds_all.shape)
