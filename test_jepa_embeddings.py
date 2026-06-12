@@ -15,7 +15,7 @@ from individual_stocks.data_class_parquet import StockMarketJEPADataset
 from individual_stocks.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
-MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
+MODEL_PATH    = "jepa-model/jepa_model_12/workspace/outputs/jepa_model_11/model_model_epoch_2000_encoder.pt"
 TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
 TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis/iteration-1"
