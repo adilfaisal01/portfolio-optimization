@@ -110,13 +110,11 @@ def loss_pred(pred, target_ema):
     return loss
 
 def save_model(encoder, predictor, epoch):
-    save_path = trainingsetup.model_path + "_jepa_epoch_" + str(epoch) + ".pt"
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    base_path = trainingsetup.model_path
+    os.makedirs(os.path.dirname(base_path), exist_ok=True)
     try:
-        torch.save({
-            "encoder": encoder.state_dict(),
-            "predictor": predictor.state_dict(),
-        }, save_path)
+        torch.save(encoder.state_dict(), f"{base_path}_model_epoch_{epoch}_encoder.pt")
+        torch.save(predictor.state_dict(), f"{base_path}_model_epoch_{epoch}_predictor.pt")
     except:
         print('lmao bruh, failure to save')
 
