@@ -109,11 +109,14 @@ def loss_pred(pred, target_ema):
     loss /= len(pred)
     return loss
 
-def save_model(model, epoch):
-    save_path=trainingsetup.model_path+ "_epoch_" + str(epoch)+".pt"
+def save_model(encoder, predictor, epoch):
+    save_path = trainingsetup.model_path + "_jepa_epoch_" + str(epoch) + ".pt"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     try:
-        torch.save(model.state_dict(), save_path)
+        torch.save({
+            "encoder": encoder.state_dict(),
+            "predictor": predictor.state_dict(),
+        }, save_path)
     except:
         print('lmao bruh, failure to save')
 
@@ -304,7 +307,7 @@ for epoch in range(trainingsetup.num_epochs):
         val_var_losses.append(val_var)
         val_cov_losses.append(val_cov)
         val_epochs.append(epoch + 1)
-        save_model(encoder,(epoch+1))
+        save_model(encoder, predictor, (epoch+1))
         print(f"epoch {epoch+1}, train loss: {avg_loss:.4f}  |  val loss: {val_loss:.4f}  |  checkpoint saved")
         # after epoch finishes, plot all curves
         plot_all_curves(epoch_losses, val_losses, train_pred_losses, val_pred_losses, train_var_losses, val_var_losses, train_cov_losses, val_cov_losses, val_epochs, output_dir)
