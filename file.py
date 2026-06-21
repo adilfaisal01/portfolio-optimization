@@ -7,7 +7,8 @@ from dynamics import MPCPLanner,MarketSimulator
 # 1. INITIALIZATION
 # ---------------------------------------------------------
 transition_date = "2020-01-01"
-var_eng = VARAnalysis(final_date=transition_date)
+return_data = pd.read_csv("/mnt/E/sabrina-sandbox/Daily-return-ratio.csv")
+var_eng = VARAnalysis(final_date=transition_date, return_data=return_data)
 train_df, test_df = var_eng.data_segmentation()
 
 # Pre-train the "Brain" on the 11-year stable regime
@@ -15,7 +16,7 @@ var_eng.fit_model(train_df)
 
 ## VIX model calculations
 
-vix_data=pd.read_csv("../test_vix.csv")
+vix_data=pd.read_csv("test_vix.csv")
 vix_normal=18 #calculated from 2009-2019, normal conditions
 
 # Initialize the "Physical Reality"
@@ -24,7 +25,7 @@ market = MarketSimulator(initial_wealth=10000, initial_weights=[1/7]*7)
 
 # Initialize the "Strategist"
 R_base=1
-planner = MPCPLanner(n_assets=7, wmax=0.30, N_horizon=30, trans_cost=R_base)
+planner = MPCPLanner(n_assets=7, wmax=0.40, N_horizon=30, trans_cost=R_base)
 # Storage for performance analysis
 history = []
 indices = var_eng.indices_list
