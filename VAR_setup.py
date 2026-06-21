@@ -5,7 +5,7 @@ import pandas as pd
 
 # setting up training and test data
 class VARAnalysis:
-    def __init__(self, final_date,return_data=pd.read_csv(filepath_or_buffer="../Daily-return-ratio.csv")):
+    def __init__(self, final_date, return_data=None):
         self.train_final_date=final_date
         self.return_data=return_data
         self.indices_list=['AGG', 'GLD', 'SLV', 'SPY', 'VTI','VEA', 'VWO']
@@ -31,18 +31,31 @@ class VARAnalysis:
     def fit_model(self,train_data):
         # vector autoregression
         TD=np.array(train_data[self.indices_list])
+        # Check for NaN/Inf
+        if np.any(np.isnan(TD)) or np.any(np.isinf(TD)):
+            print("Warning: NaN/Inf in training data, skipping fit")
+            return False
         model=VAR(TD)
         
         if self.k_ar is None:
-            self.parameters=model.fit(ic='aic')
-            self.k_ar=self.parameters.k_ar
-            self.coeffs=self.parameters.coefs
-            self.intercepts=self.parameters.intercept
+            try:
+                self.parameters=model.fit(ic='aic')
+                self.k_ar=self.parameters.k_ar
+                self.coeffs=self.parameters.coefs
+                self.intercepts=self.parameters.intercept
+            except Exception as e:
+                print(f"VAR fit failed: {e}")
+                return False
         else:
-            self.parameters=model.fit(ic='aic',maxlags=self.k_ar)
-            self.k_ar=self.parameters.k_ar
-            self.coeffs=self.parameters.coefs
-            self.intercepts=self.parameters.intercept
+            try:
+                self.parameters=model.fit(ic='aic',maxlags=self.k_ar)
+                self.k_ar=self.parameters.k_ar
+                self.coeffs=self.parameters.coefs
+                self.intercepts=self.parameters.intercept
+            except Exception as e:
+                print(f"VAR fit failed: {e}")
+                return False
+        return True
     def forecast_model(self,N_horizon,lookbackdata):
         #forecasting using VAR
         predictions_return=self.parameters.forecast(y=lookbackdata,steps=N_horizon) #steps denote the number of days im forecasting
