@@ -46,15 +46,22 @@ class MPCPLanner:
         return self.T_bar, self.S_bar
     
     def cost_matrices(self,r_hat_cov,x_0):
-        Q_top=np.zeros((1,self.n+1))
-        Q_bottom=np.hstack((np.zeros((self.n,1)),r_hat_cov))
-        Q=np.vstack((Q_top,Q_bottom))
-        
-        print(Q.shape)    
-        assert Q.shape==(self.n+1,self.n+1) #making the cost matrices from the covariances of the returns
-        # print(f'Q={Q}')
-        # stacking the Q matrices over time horizon, N, since only the diagonals have the Q matrices and the rest are zero, the Q_bar is a sparse block diagonal
-        Q_bar=block_diag([Q for _ in range(self.N)],format='csc').toarray()
+        # r_hat_cov: (N_horizon, n_assets, n_assets) or (n_assets, n_assets)
+        # Build per-step Q matrices so risk evolves over the horizon
+        Q_list = []
+        for i in range(self.N):
+            Q_top = np.zeros((1, self.n+1))
+            if r_hat_cov.ndim == 3:
+                # Per-step covariance
+                cov = r_hat_cov[i]
+            else:
+                # Static covariance — same for all steps
+                cov = r_hat_cov
+            Q_bottom = np.hstack((np.zeros((self.n, 1)), cov))
+            Q_i = np.vstack((Q_top, Q_bottom))
+            assert Q_i.shape == (self.n+1, self.n+1)
+            Q_list.append(Q_i)
+        Q_bar = block_diag(Q_list, format='csc').toarray()
         # print(f'Q_bar:{Q_bar}') # Q_bar is the block sparse matrix for the full cost vector
         
         print(f'shape of Q_bar={Q_bar.shape}')
