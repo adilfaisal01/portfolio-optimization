@@ -1,8 +1,7 @@
 """
     Script for the Decoder
     ---
-        Class Decoder contains the decoder achitecture which is based on a
-        simple Linear Layer.
+        MLPDecoder: 2-layer MLP (64 → 128 → 49) with ReLU.
 """
 
 import torch
@@ -11,10 +10,15 @@ import numpy as np
 from .utils.modules import *
 
 
-class LinearDecoder(nn.Module):
-    def __init__(self, emb_dim, patch_size):
-        super(LinearDecoder, self).__init__()
-        self.fc = nn.Linear(emb_dim, patch_size)
+class MLPDecoder(nn.Module):
+    def __init__(self, emb_dim, patch_size, hidden_dim=128):
+        super(MLPDecoder, self).__init__()
+        self.fc1 = nn.Linear(emb_dim, hidden_dim)
+        self.activation = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_dim, patch_size)
 
     def forward(self, encoded_patch):
-        return self.fc(encoded_patch)
+        x = self.fc1(encoded_patch)
+        x = self.activation(x)
+        x = self.fc2(x)
+        return x
