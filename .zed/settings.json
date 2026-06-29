@@ -1,5 +1,32 @@
-// Folder-specific settings
-//
-// For a full list of overridable settings, and general information on folder-specific settings,
-// see the documentation: https://zed.dev/docs/configuring-zed#settings-files
-{}
+{
+  "languages": {
+    "Python": {
+      "language_servers": ["pyright"],
+      "formatter": {
+        "language_server": {
+          "name": "pyright"
+        }
+      }
+    }
+  },
+  "lsp": {
+    "pyright": {
+      "settings": {
+        "python": {
+          "pythonPath": "/home/adilfaisal01/.pyenv/versions/ML-DL/bin/python3",
+          "venvPath": "/home/adilfaisal01/.pyenv/versions/ML-DL",
+          "analysis": {
+            "typeCheckingMode": "basic",
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true
+          }
+        }
+      }
+    }
+  },
+  "terminal": {
+    "env": {
+      "PYENV_VERSION": "ML-DL"
+    }
+  }
+}
