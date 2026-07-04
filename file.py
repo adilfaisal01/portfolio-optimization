@@ -16,7 +16,7 @@ var_eng.fit_model(train_df)
 
 ## VIX model calculations
 
-vix_data=pd.read_csv("test_vix.csv")
+vix_data=pd.read_csv("/mnt/E/sabrina-sandbox/test_vix.csv")
 vix_normal=18 #calculated from 2009-2019, normal conditions
 
 # Initialize the "Physical Reality"
@@ -25,7 +25,7 @@ market = MarketSimulator(initial_wealth=10000, initial_weights=[1/7]*7)
 
 # Initialize the "Strategist"
 R_base=1
-planner = MPCPLanner(n_assets=7, wmax=0.40, N_horizon=30, trans_cost=R_base)
+planner = MPCPLanner(n_assets=7, wmax=0.40, N_horizon=21, trans_cost=R_base)
 # Storage for performance analysis
 history = []
 indices = var_eng.indices_list
