@@ -1,7 +1,8 @@
 import torch
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from jepa.models.encoder import Encoder
 from torch.utils.data import DataLoader
-import os
 from jepa.data.data_class_parquet import StockMarketJEPADataset
 MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
 TRAIN_PARQUET = "jepa/data/parquet_data/sector_etf_clean_trainingset.parquet"
