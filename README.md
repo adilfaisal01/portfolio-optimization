@@ -251,16 +251,6 @@ Detailed experiment logs, architecture decisions, and findings live in `lab-note
 
 ---
 
-## Future Work
-
-- **Stochastic MPC** using a distribution of returns rather than point forecasts
-- **Adaptive system identification** (Recursive Least Squares, windowing)
-- **JEPA → MPC pipeline:** Use JEPA embeddings as input features for the MPC controller
-- **Expand beyond 7 assets** to include individual stocks and alternatives
-- **Online JEPA training** with streaming market data
-
----
-
 ## Author
 
 **Adil Faisal** — 2026
