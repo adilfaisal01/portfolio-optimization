@@ -36,7 +36,6 @@ MANIFEST
 *.spec
 
 # Agentic stuff
-AGENTS.md
 .pca_grpo_plan.md
 session*.md
 
