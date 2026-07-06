@@ -8,14 +8,14 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 
-from src.models.encoder import Encoder
-from individual_stocks.data_class_parquet import StockMarketJEPADataset
+from jepa.models.encoder import Encoder
+from jepa.data.data_class_parquet import StockMarketJEPADataset
 
 torch.manual_seed(42)
 np.random.seed(42)
 
 DEVICE = "cpu"
-PARQUET_PATH = "/mnt/E/github-projects/portfolio-optimization/individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
+PARQUET_PATH = "/mnt/E/github-projects/portfolio-optimization/jepa/data/parquet_data/sector_etf_clean_testingset.parquet"
 NUM_PATCHES = 20
 CONTEXT = 10
 

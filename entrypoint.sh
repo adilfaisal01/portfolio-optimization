@@ -13,6 +13,6 @@ case "$1" in
         ;;
     *)
         echo "Starting single JEPA training run..."
-        python3 -u /portfolio-opt/jepa-training.py
+        python3 -u /portfolio-opt/jepa/training/jepa-training.py
         ;;
 esac

@@ -10,14 +10,14 @@ from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, '.')
-from src.models.encoder import Encoder
-from individual_stocks.data_class_parquet import StockMarketJEPADataset
-from individual_stocks.dataextraction import DataExtractor
+from jepa.models.encoder import Encoder
+from jepa.data.data_class_parquet import StockMarketJEPADataset
+from jepa.data.dataextraction import DataExtractor
 
 # --- Config ----------------------------------------------------------------
 MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
-TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
-TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
+TRAIN_PARQUET = "jepa/data/parquet_data/sector_etf_clean_trainingset.parquet"
+TEST_PARQUET  = "jepa/data/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis/iteration-1"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 PROBE_TICKER  = "VNQ"

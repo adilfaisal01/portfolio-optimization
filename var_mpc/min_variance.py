@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
-from VAR_setup import VARAnalysis
+from var_mpc.VAR_setup import VARAnalysis
 
 # ─────────────────────────────────────────────
 # 1. DATA SETUP

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from scipy import sparse
 # Import your classes here
-from dynamics import MPCPLanner, MarketSimulator
+from var_mpc.dynamics import MPCPLanner, MarketSimulator
 
 @pytest.fixture
 def setup_params():

@@ -20,7 +20,7 @@ COPY . .
 RUN mkdir -p /workspace/outputs
 
 ENV output_dir=/workspace/outputs
-ENV dataset_dir=/portfolio-opt/individual_stocks/parquet_data
+ENV dataset_dir=/portfolio-opt/jepa/data/parquet_data
 ENV PYTHONPATH=/portfolio-opt
 
 ENTRYPOINT ["/bin/bash", "/portfolio-opt/entrypoint.sh"]

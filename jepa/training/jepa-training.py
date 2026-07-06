@@ -1,15 +1,15 @@
-from src.models.encoder import Encoder
-from src.models.utils.mask_utils import apply_mask
-from src.models.predictor import Predictor
+from jepa.models.encoder import Encoder
+from jepa.models.utils.mask_utils import apply_mask
+from jepa.models.predictor import Predictor
 import copy
 import torch
-from individual_stocks.data_class_parquet import StockMarketJEPADataset
+from jepa.data.data_class_parquet import StockMarketJEPADataset
 from torch.utils.data import DataLoader
 import os
 from dataclasses import dataclass, field
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from src.models.utils.mask_utils import apply_mask
+from jepa.models.utils.mask_utils import apply_mask
 
 
 def _init_from_env(obj, prefix: str) -> None:
@@ -64,10 +64,10 @@ trainingsetup=Training_configuration()
 dev= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## loading the training dataset
-dataset=StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio,num_patches=jepa_setup.num_patches,vix_fairweather=jepa_setup.vix_fairweather,parquet_path="individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet")
+dataset=StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio,num_patches=jepa_setup.num_patches,vix_fairweather=jepa_setup.vix_fairweather,parquet_path="jepa/data/parquet_data/sector_etf_clean_trainingset.parquet")
 data_loaded= DataLoader(dataset,batch_size=trainingsetup.batch_size,shuffle=True)
 
-VAL_PARQUET_PATH = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
+VAL_PARQUET_PATH = "jepa/data/parquet_data/sector_etf_clean_testingset.parquet"
 val_dataset = StockMarketJEPADataset(mask_ratio=jepa_setup.mask_ratio, num_patches=jepa_setup.num_patches, vix_fairweather=jepa_setup.vix_fairweather, parquet_path=VAL_PARQUET_PATH)
 val_loader = DataLoader(val_dataset, batch_size=trainingsetup.batch_size, shuffle=False)
 

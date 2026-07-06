@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import pandas as pd
 from gymnasium import spaces
-from dataextraction import DataExtractor
+from jepa.data.dataextraction import DataExtractor
 
 class Portfoliomarket(gym.Env):
     def __init__(self,n_assets:int, n_macro_indicators:int ,max_alloc:float, start_cap:float) -> None:

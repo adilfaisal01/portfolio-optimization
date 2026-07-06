@@ -1,10 +1,10 @@
 from torch.utils.data import Dataset
-from .dataextraction import DataExtractor
+from jepa.data.dataextraction import DataExtractor
 import torch
 import random
 
 class StockMarketJEPADataset(Dataset):
-    def __init__(self,mask_ratio:float, num_patches:int, vix_fairweather:int,parquet_path:str='parquet_data/sector_etf_clean_trainingset.parquet'):
+    def __init__(self,mask_ratio:float, num_patches:int, vix_fairweather:int,parquet_path:str='jepa/data/parquet_data/sector_etf_clean_trainingset.parquet'):
             self.num_patches=num_patches
             self.mask_ratio=mask_ratio
             self.parquet_path=parquet_path

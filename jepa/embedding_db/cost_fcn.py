@@ -1,11 +1,11 @@
 import torch
-from src.models.encoder import Encoder
+from jepa.models.encoder import Encoder
 from torch.utils.data import DataLoader
 import os
-from individual_stocks.data_class_parquet import StockMarketJEPADataset
+from jepa.data.data_class_parquet import StockMarketJEPADataset
 MODEL_PATH    = "jepa-model/jepa_model_10/model_epoch_2000.pt"
-TRAIN_PARQUET = "individual_stocks/parquet_data/sector_etf_clean_trainingset.parquet"
-TEST_PARQUET  = "individual_stocks/parquet_data/sector_etf_clean_testingset.parquet"
+TRAIN_PARQUET = "jepa/data/parquet_data/sector_etf_clean_trainingset.parquet"
+TEST_PARQUET  = "jepa/data/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR    = "jepa-model/analysis/iteration-1"
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 PROBE_TICKER  = "VNQ"
@@ -66,5 +66,10 @@ for batch in data_loaded_train:
 
 embeds_all_train=torch.cat(embeds_all_train,dim=0)
 
-print(embeds_all_train.shape) #(163,20,64) shape
+#print(type(embeds_all_train)) #(163,20,64), torch. tensor
 
+# to capture the trajectory and maintain the temporal strcture, we flatten the shape 163,20,64 to 163,1280. 163= number of 20 day windows seen during
+embeds_all_train=embeds_all_train.flatten(start_dim=1)
+# print(embeds_all_train[0])#--> flatten tensor to (163,1280)
+
+# in vector

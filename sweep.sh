@@ -24,7 +24,7 @@ export TRAIN_LAMBDA_CV=2.1
 mkdir -p /workspace/outputs
 
 echo "=== Starting single training run ==="
-python3 -u /portfolio-opt/jepa-training.py
+python3 -u /portfolio-opt/jepa/training/jepa-training.py
 echo "=== Training complete ==="
 
 sleep infinity
