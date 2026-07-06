@@ -24,8 +24,17 @@ def query_similar(current_embedding:torch.Tensor, k:int=10):
          scores
      )
 
+def weighted_financial_metrics(current_embedding:torch.Tensor, k:int, tau:float):
+    start_date, end_date,vix_avg,mean_returns, covars,scores=query_similar(current_embedding, k=k) # find topk=5, 5 closest neighbors
+    weights=torch.softmax(-scores/tau,dim=0) #low distance= higher softmax score
+    weighted_mean_returns=torch.einsum('k,ki->i', weights, mean_returns)
+    weighted_covariance=torch.einsum('k,kij->ij', weights, covars)
+
+    return weighted_covariance, weighted_mean_returns
+    
+        
 # test_query->using the first historical as a test, distance should be ~0 to self and massive to other periods
-if name=='__main__':
+if __name__ == '__main__':
     test_query=db["embeddings"][162]
     start_date, end_date, _,mean_returns,_,scores=query_similar(test_query)
     print(f'Start-date: {start_date} \n\n',f'End-date:{end_date}\n\n', f'Score:{mean_returns.shape}')

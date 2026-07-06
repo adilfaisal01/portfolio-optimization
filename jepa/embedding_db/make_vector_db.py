@@ -112,7 +112,7 @@ for i, batch in enumerate(loader):
     end_dates.append(dates_all[end - 1])
     embeddings.append(emb)
     vix_avgs.append(vix_avg)
-    mean_log_returns.append(log_ret_etfs)
+    mean_log_returns.append(mu)
     covars.append(cov)
 
 embeddings = torch.cat(embeddings, dim=0)

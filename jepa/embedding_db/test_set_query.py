@@ -4,7 +4,7 @@ import torch
 from jepa.models.encoder import Encoder
 from jepa.data.data_class_parquet import StockMarketJEPADataset
 from torch.utils.data import DataLoader
-from jepa.embedding_db.query import query_similar
+from jepa.embedding_db.query import query_similar,weighted_financial_metrics
 
 # # Load encoder
 encoder = Encoder(dim_in=49, num_patches=20, kernel_size=49, embed_dim=64,
@@ -33,9 +33,12 @@ query_emb = z.flatten(start_dim=1).squeeze(0)  # (1280,)
 
 print("COVID crash (Mar 9 → Apr 3, 2020) → top 5 historical matches:")
 start_date, end_date,vix_avg,mean_returns, covars,scores=query_similar(query_emb, k=5) # find topk=5, 5 closest neighbors
-print(covars[0].shape)
-
-norm_scores=scores/torch.sum(scores)
-print(norm_scores)
+print(covars.shape)  #(5,11,11)
+print(mean_returns.shape) #(5,11)
+# print(covars[0].shape)
 # print(f'Start date:{start_date}\n\n', f'End_date:{end_date}\n\n', f'Scores: {scores} \n\n', f'Vix Averages: {torch.Tensor(mean_returns).shape}')
 
+# implementing sparse attention (top K neighbors, via the normalized scores)
+weighted_cv, weighted_mu=weighted_financial_metrics(query_emb,k=5,tau=0.4)
+print(weighted_cv.shape)
+print(weighted_mu.shape)
