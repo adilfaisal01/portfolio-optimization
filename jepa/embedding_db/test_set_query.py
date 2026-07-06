@@ -31,4 +31,11 @@ with torch.no_grad():
 
 query_emb = z.flatten(start_dim=1).squeeze(0)  # (1280,)
 
-start_date, end_date,
+print("COVID crash (Mar 9 → Apr 3, 2020) → top 5 historical matches:")
+start_date, end_date,vix_avg,mean_returns, covars,scores=query_similar(query_emb, k=5) # find topk=5, 5 closest neighbors
+print(covars[0].shape)
+
+norm_scores=scores/torch.sum(scores)
+print(norm_scores)
+# print(f'Start date:{start_date}\n\n', f'End_date:{end_date}\n\n', f'Scores: {scores} \n\n', f'Vix Averages: {torch.Tensor(mean_returns).shape}')
+

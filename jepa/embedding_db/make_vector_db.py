@@ -129,8 +129,8 @@ db = {
     "end_dates": [str(d) for d in end_dates],
     "embeddings": embeddings,
     "vix_avg": torch.tensor(vix_avgs),
-    "mean_returns":mean_log_returns,
-    "covariances":covars,
+    "mean_returns":torch.stack(mean_log_returns),
+    "covariances":torch.stack(covars),
 }
 torch.save(db, os.path.join(OUTPUT_DIR, "embedding_db.pt"))
 print(f"\nSaved: {OUTPUT_DIR}/embedding_db.pt")

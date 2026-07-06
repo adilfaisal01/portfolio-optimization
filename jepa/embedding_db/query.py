@@ -1,3 +1,5 @@
+from os import name
+
 import torch
 import pandas as pd
 
@@ -17,13 +19,13 @@ def query_similar(current_embedding:torch.Tensor, k:int=10):
          [db["start_dates"][i] for i in idx],
          [db["end_dates"][i] for i in idx],
          db["vix_avg"][idx],
-         [db['mean_returns'][i] for i in idx],
-         [db['covariances'][i] for i in idx],
+         db['mean_returns'][idx],
+         db['covariances'][idx],
          scores
      )
 
 # test_query->using the first historical as a test, distance should be ~0 to self and massive to other periods
-
-# test_query=db["embeddings"][162]
-# start_date, end_date, _,_,_,scores=query_similar(test_query)
-# print(f'Start-date: {start_date} \n\n',f'End-date:{end_date}\n\n', f'Score:{scores}')
+if name=='__main__':
+    test_query=db["embeddings"][162]
+    start_date, end_date, _,mean_returns,_,scores=query_similar(test_query)
+    print(f'Start-date: {start_date} \n\n',f'End-date:{end_date}\n\n', f'Score:{mean_returns.shape}')
