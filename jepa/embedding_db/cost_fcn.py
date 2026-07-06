@@ -1,4 +1,4 @@
-# FILE: jepa/embedding_db/cost_fcn.py (120 lines)
+# FILE: jepa/embedding_db/cost_fcn.py
 """
 Build and query the JEPA embedding database.
 
@@ -12,14 +12,14 @@ import torch
 import os
 import pandas as pd
 import numpy as np
-from jepa.data.data_class_parquet import StockMarketJEPADataset
 from jepa.models.encoder import Encoder
+from jepa.data.data_class_parquet import StockMarketJEPADataset
 from jepa.data.dataextraction import DataExtractor
+from torch.utils.data import DataLoader
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 MODEL_PATH     = "jepa-model/jepa_model_10/model_epoch_2000.pt"
 TRAIN_PARQUET  = "jepa/data/parquet_data/sector_etf_clean_trainingset.parquet"
-TEST_PARQUET   = "jepa/data/parquet_data/sector_etf_clean_testingset.parquet"
 OUTPUT_DIR     = "jepa-model/analysis/iteration-1"
 DEVICE         = "cuda" if torch.cuda.is_available() else "cpu"
 VIX_FAIRWEATHER = 20
@@ -36,23 +36,17 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 # ============================================================================
-# 1. BUILD RAW DATA TENSOR + DATES (mirrors StockMarketJEPADataset internals)
+# 1. GET DATES (just the date index, no tensor rebuild)
 # ============================================================================
 print("=" * 60)
 print("Building embedding database")
 print("=" * 60)
 
-dat,_,_= StockMarketJEPADataset
-# Drop NaN rows (VIX column is index 48)
-nan_mask = ~torch.isnan(dat).any(dim=1)
-dat = dat[nan_mask]
-dates_clean = dates_all[nan_mask.numpy()]
-
-# VIX is the last column (index 48)
-vix_col = dat[:, 48]
-
-print(f"Total clean days: {len(dates_clean)}")
-print(f"Date range: {dates_clean[0]} to {dates_clean[-1]}")
+de = DataExtractor(ticker_list=None, macro_indices=None, dataset=TRAIN_PARQUET)
+etf_lr, _, _ = de.get_assets()
+dates_all = etf_lr.index
+print(f"Total days: {len(dates_all)}")
+print(f"Date range: {dates_all[0]} to {dates_all[-1]}")
 
 
 # ============================================================================
@@ -75,9 +69,14 @@ print(f"Total params: {sum(p.numel() for p in encoder.parameters()):,}")
 
 
 # ============================================================================
-# 3. SLIDE WINDOWS → EMBEDDINGS + VIX + DATES
+# 3. ITERATE DATASET → EMBEDDINGS + VIX + DATES
 # ============================================================================
-num_windows = len(dates_clean) // NUM_PATCHES
+dataset = StockMarketJEPADataset(
+    mask_ratio=0.0, num_patches=NUM_PATCHES,
+    vix_fairweather=VIX_FAIRWEATHER, parquet_path=TRAIN_PARQUET,
+)
+loader = DataLoader(dataset, batch_size=1, shuffle=False)
+num_windows = len(dataset)
 print(f"Number of {NUM_PATCHES}-day windows: {num_windows}")
 
 start_dates = []
@@ -85,29 +84,25 @@ end_dates = []
 embeddings = []
 vix_avgs = []
 
-for i in range(num_windows):
+for i, batch in enumerate(loader):
+    x = batch[0].to(DEVICE)  # (1, 20, 49)
+
+    with torch.no_grad():
+        z = encoder(x, mask=None)  # (1, 20, 64)
+
+    emb = z.flatten(start_dim=1).cpu()  # (1, 1280)
+
+    # VIX is column 48 in the window tensor
+    vix_avg = x[0, :, 48].mean().item()
+
     start = i * NUM_PATCHES
     end = start + NUM_PATCHES
 
-    # Window of raw data
-    window = dat[start:end].unsqueeze(0).to(DEVICE)  # (1, 20, 49)
-
-    # Encode
-    with torch.no_grad():
-        z = encoder(window, mask=None)  # (1, 20, 64)
-
-    # Flatten to 1280
-    emb = z.flatten(start_dim=1).cpu()  # (1, 1280)
-
-    # VIX average over the window (normalized, already /20)
-    vix_avg = vix_col[start:end].mean().item()
-
-    start_dates.append(dates_clean[start])
-    end_dates.append(dates_clean[end - 1])
+    start_dates.append(dates_all[start])
+    end_dates.append(dates_all[end - 1])
     embeddings.append(emb)
     vix_avgs.append(vix_avg)
 
-# Stack embeddings → (num_windows, 1280)
 embeddings = torch.cat(embeddings, dim=0)
 
 print(f"Embeddings shape: {embeddings.shape}")
@@ -117,24 +112,20 @@ print(f"Sample window 0: {start_dates[0]} → {end_dates[0]}, VIX={vix_avgs[0]:.
 # ============================================================================
 # 4. SAVE
 # ============================================================================
-
-# ── Torch format (for fast loading in cost function) ──
 db = {
     "start_dates": [str(d) for d in start_dates],
     "end_dates": [str(d) for d in end_dates],
-    "embeddings": embeddings,       # (N, 1280)
-    "vix_avg": torch.tensor(vix_avgs),  # (N,)
+    "embeddings": embeddings,
+    "vix_avg": torch.tensor(vix_avgs),
 }
 torch.save(db, os.path.join(OUTPUT_DIR, "embedding_db.pt"))
 print(f"\nSaved: {OUTPUT_DIR}/embedding_db.pt")
 
-# ── Parquet format (for inspection) ──
 df = pd.DataFrame({
     "start_date": [str(d) for d in start_dates],
     "end_date": [str(d) for d in end_dates],
     "vix_avg": vix_avgs,
 })
-# Embeddings as list of lists for parquet
 df["embedding"] = [emb.numpy().tolist() for emb in embeddings]
 df.to_parquet(os.path.join(OUTPUT_DIR, "embedding_db.parquet"))
 print(f"Saved: {OUTPUT_DIR}/embedding_db.parquet")
@@ -142,4 +133,3 @@ print(f"Saved: {OUTPUT_DIR}/embedding_db.parquet")
 print("\n✅ Embedding database built!")
 print(f"   {num_windows} windows × 1280 dims")
 print(f"   Date range: {start_dates[0]} → {end_dates[-1]}")
-
