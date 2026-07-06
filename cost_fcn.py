@@ -55,4 +55,16 @@ train_dataset = StockMarketJEPADataset(
 )
 
 #running the encoder through the training data
-data_loaded_train= DataLoader(dataset=train_dataset, batch_size=1,)
+data_loaded_train= DataLoader(dataset=train_dataset, batch_size=1,shuffle=False)
+
+embeds_all_train=[]
+for batch in data_loaded_train:
+    x=batch[0].to(DEVICE)
+    with torch.no_grad():
+        z=encoder(x,mask=None)
+    embeds_all_train.append(z)
+
+embeds_all_train=torch.cat(embeds_all_train,dim=0)
+
+print(embeds_all_train.shape) #(163,20,64) shape
+
