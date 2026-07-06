@@ -1,6 +1,5 @@
 import torch
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import os
 from jepa.models.encoder import Encoder
 from torch.utils.data import DataLoader
 from jepa.data.data_class_parquet import StockMarketJEPADataset
@@ -73,4 +72,4 @@ embeds_all_train=torch.cat(embeds_all_train,dim=0)
 embeds_all_train=embeds_all_train.flatten(start_dim=1)
 # print(embeds_all_train[0])#--> flatten tensor to (163,1280)
 
-# in vector
+# in vector database, we need the dates, embeddings
