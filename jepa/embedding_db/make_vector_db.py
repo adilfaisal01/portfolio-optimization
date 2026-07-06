@@ -79,10 +79,15 @@ loader = DataLoader(dataset, batch_size=1, shuffle=False)
 num_windows = len(dataset)
 print(f"Number of {NUM_PATCHES}-day windows: {num_windows}")
 
+ETF_RETURNS= slice(0,11)
+
+
 start_dates = []
 end_dates = []
 embeddings = []
 vix_avgs = []
+mean_returns=[]
+covars=[]
 
 for i, batch in enumerate(loader):
     x = batch[0].to(DEVICE)  # (1, 20, 49)
@@ -90,7 +95,7 @@ for i, batch in enumerate(loader):
     with torch.no_grad():
         z = encoder(x, mask=None)  # (1, 20, 64)
 
-    emb = z.flatten(start_dim=1).cpu()  # (1, 1280)
+    emb = z.flatten(start_dim=1)  # (1, 1280)
 
     # VIX is column 48 in the window tensor
     vix_avg = x[0, :, 48].mean().item()
