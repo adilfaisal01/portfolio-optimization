@@ -79,14 +79,11 @@ loader = DataLoader(dataset, batch_size=1, shuffle=False)
 num_windows = len(dataset)
 print(f"Number of {NUM_PATCHES}-day windows: {num_windows}")
 
-ETF_RETURNS= slice(0,11)
-
-
 start_dates = []
 end_dates = []
 embeddings = []
 vix_avgs = []
-mean_returns=[]
+mean_log_returns=[]
 covars=[]
 
 for i, batch in enumerate(loader):
@@ -97,9 +94,17 @@ for i, batch in enumerate(loader):
 
     emb = z.flatten(start_dim=1)  # (1, 1280)
 
-    # VIX is column 48 in the window tensor
+    # VIX is column 48 in the window tensor, Pulling log returns as well as h-l spreads
     vix_avg = x[0, :, 48].mean().item()
+    log_ret_etfs= x[0,:,0:11]
+    mu= log_ret_etfs.mean(dim=0)
 
+    # finding average covariance using the Parkinson Estimator
+    hl_spread=x[0,:,11:22]
+    vol = hl_spread.mean(dim=0) / (2 * (2 / torch.pi) ** 0.5)  # (11,)
+    corr = torch.corrcoef(log_ret_etfs.T)                        # (11, 11)
+    cov = torch.diag(vol) @ corr @ torch.diag(vol)              # (11, 11)
+    
     start = i * NUM_PATCHES
     end = start + NUM_PATCHES
 
@@ -107,6 +112,8 @@ for i, batch in enumerate(loader):
     end_dates.append(dates_all[end - 1])
     embeddings.append(emb)
     vix_avgs.append(vix_avg)
+    mean_log_returns.append(log_ret_etfs)
+    covars.append(cov)
 
 embeddings = torch.cat(embeddings, dim=0)
 
@@ -122,6 +129,8 @@ db = {
     "end_dates": [str(d) for d in end_dates],
     "embeddings": embeddings,
     "vix_avg": torch.tensor(vix_avgs),
+    "mean_returns":mean_log_returns,
+    "covariances":covars,
 }
 torch.save(db, os.path.join(OUTPUT_DIR, "embedding_db.pt"))
 print(f"\nSaved: {OUTPUT_DIR}/embedding_db.pt")
@@ -132,6 +141,8 @@ df = pd.DataFrame({
     "vix_avg": vix_avgs,
 })
 df["embedding"] = [emb.numpy().tolist() for emb in embeddings]
+df["mean_log_returns"] = [m.tolist() for m in mean_log_returns]  # list of 11 floats
+df["covar"] = [c.flatten().tolist() for c in covars]          # list of 121 floats
 df.to_parquet(os.path.join(OUTPUT_DIR, "embedding_db.parquet"))
 print(f"Saved: {OUTPUT_DIR}/embedding_db.parquet")
 
