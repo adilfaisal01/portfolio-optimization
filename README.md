@@ -2,7 +2,7 @@
 
 **Two-phase project: Model Predictive Control meets Self-Supervised Learning for portfolio management.**
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg) ![OSQP](https://img.shields.io/badge/Solver-OSQP-green.svg) ![PyTorch](https://img.shields.io/badge/Framework-PyTorch-red.svg)
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg) ![OSQP](https://img.shields.io/badge/Solver-OSQP-green.svg) ![PyTorch](https://img.shields.io/badge/Framework-PyTorch-red.svg)
 
 ---
 
@@ -10,8 +10,8 @@
 
 This project explores two complementary approaches to dynamic portfolio management:
 
-1. **Phase 1 — VAR-MPC:** A model-based control approach using Vector Autoregression for return forecasting and Model Predictive Control for optimal rebalancing.
-2. **Phase 2 — JEPA:** A self-supervised learning approach using a Joint-Embedding Predictive Architecture to learn market representations without labels, then probing what those representations encode.
+1. **Phase 1 — VAR-MPC (`var_mpc/`):** A model-based control approach using Vector Autoregression for return forecasting and Model Predictive Control for optimal rebalancing.
+2. **Phase 2 — JEPA (`jepa/`):** A self-supervised learning approach using a Joint-Embedding Predictive Architecture to learn market representations, then using those representations as a **KV retrieval system** to inform the MPC cost function.
 
 The project manages 7 ETFs spanning bonds, equities, precious metals, and international markets.
 
@@ -75,52 +75,66 @@ The MPC strategy delivers superior risk-adjusted returns — second-highest Shar
 
 ---
 
-## Phase 2: JEPA Representation Learning
+## Phase 2: JEPA Representation Learning + KV Retrieval
 
 ### Motivation
 
-The VAR-MPC approach relies on point forecasts from a linear model. What if we could learn richer representations of market state — capturing regime changes, volatility regimes, and latent market factors — without requiring labeled data?
+The VAR-MPC approach relies on point forecasts from a linear model. What if we could learn richer representations of market state — capturing regime changes, volatility regimes, and latent market factors — and use them to **retrieve similar historical regimes** to inform the MPC cost function?
 
 ### Architecture
 
-The JEPA (Joint-Embedding Predictive Architecture) uses a Transformer-based encoder to embed market patches and a predictor to forecast masked patches in latent space:
+The JEPA encoder produces 1280-dimensional embeddings (20 patches × 64 dims) from 49-feature market windows (11 ETFs × 3 metrics + 5 macro × 3 + VIX). These embeddings serve as **keys** in a KV retrieval system:
 
 ```
-Input patches (20 windows, 49 dim each)
-  → Random masking (80% visible, 20% masked)
-    → Encoder (Transformer, 4 layers, 64 embed dim) — processes visible patches only
-    → Predictor (Transformer, 2 layers, 128 embed dim) — predicts masked patch embeddings
-      → VICReg loss (variance + invariance + covariance) + L1 prediction loss
+JEPA encoder → z_t (query)
+     ↓
+KV store: 163 historical (embedding, returns, covariance) pairs
+     ↓
+Euclidean top-K retrieval → sparse attention (τ-weighted)
+     ↓
+r_weighted (11,), S_weighted (11, 11) → MPC cost function
+     ↓
+cost = -w @ r + λ(z) * w @ S @ w + τ * ||w - w_prev||₁
 ```
 
-**Key components:**
-- **Encoder:** 4-layer Transformer with Conv1D tokenizer, 64 embed dim, 8 attention heads
-- **Predictor:** 2-layer Transformer with learned mask tokens, 128 embed dim, 4 attention heads
-- **Decoder:** Simple linear layer for downstream forecasting tasks
-- **Tokenizer:** Conv1D + linear projection to patch embeddings
-- **Data:** `StockMarketJEPADataset` — parquet-based dataset with VIX conditioning
+**Key properties:**
+- **No training required** — JEPA encoder is pre-trained, everything else is retrieval + geometry
+- **Counter-cyclical risk** — λ(z) from distance to bull center adjusts risk aversion
+- **Regime-conditional covariance** — Σ comes from historical analogs, not rolling windows
+- **No lookahead** — encoder was trained on 2007-2019 only, test set is out-of-sample
 
-**Loss function:** VICReg (Variance-Invariance-Covariance Regularization) with `λ_v = 2` (variance), `λ_cv = 2.1` (covariance), plus L1 prediction loss on masked patches.
+### Embedding Database
 
-### What We Learned
+**Script:** `jepa/embedding_db/cost_fcn.py`
 
-#### 1. JEPA Embeddings Encode Market Regime
+163 windows spanning 2007-01-11 → 2019-12-20, each with:
 
-A linear probe (logistic regression) on averaged encoder embeddings achieved **97.3% full-train accuracy** classifying which year/regime a window belongs to — the confusion matrix was nearly diagonal with only 2 mistakes out of 74 windows.
+| Field | Shape | Description |
+| --- | --- | --- |
+| `start_date` | string | First day of the 20-day window |
+| `end_date` | string | Last day of the 20-day window |
+| `embedding` | (1280,) | Flattened JEPA encoder output |
+| `vix_avg` | scalar | Mean normalized VIX over the window |
+| `mean_returns` | (11,) | Mean daily log returns for 11 ETFs |
+| `covariances` | (11, 11) | Covariance via Parkinson vol proxy + correlation |
 
-Per-patch cross-validation accuracy reached **38.9%** — 2.3× random chance (16.7%), confirming regime signal is distributed across all 64 embedding dimensions rather than concentrated in a single "regime neuron."
+### KV Retrieval + Sparse Attention
 
-**Full experiment log:** `lab-notes/daily/2026-06-24.md`.
+**Script:** `jepa/embedding_db/query.py`
 
-#### 2. The Predictor Never Won
+Two functions:
+1. `query_similar()` — Euclidean distance top-K retrieval
+2. `weighted_financial_metrics()` — temperature-controlled sparse attention with einsum
 
-After testing 3 encoder architectures, 2 decoding strategies, and 6 market regimes: the JEPA predictor transformer never outperformed a simple 2-layer MLP decoder on multi-step feature forecasting. The encoder does the heavy lifting — how you decode matters less than what the encoder learns.
+**Validation results:**
 
-**Full autopsy:** `lab-notes/daily/2026-06-21.md` (see the JEPA Evaluation Autopsy section).
+| Regime | Top Match | Returns | Variance |
+|--------|-----------|---------|----------|
+| COVID Crash (Mar 2020) | Oct-Nov 2008 GFC | Mostly negative | 0.0008–0.0035 (high) |
+| AI Rally (Jun 2023) | 2010 recovery, 2016 steady | All positive | 0.00003–0.00012 (low) |
+| Rate Hike Start (Jan 2022) | Dec 2010, Mar 2016, Mar-Apr 2018 | Mixed | Moderate |
 
-#### 3. VICReg Prevents Collapse
-
-Without VICReg regularization, the JEPA embeddings collapsed to a low-rank subspace (~8 effective dimensions out of 64). With VICReg (variance + covariance terms), the effective rank increased to ~125 out of 896 dimensions — the representation spread out and captured more information.
+**Key finding:** The encoder (trained on 2007-2019 only) generalizes out-of-sample — COVID crash correctly identifies 2008 GFC as its nearest neighbor. Euclidean distance in 1280D gives proper contrast (self-distance 0.019 vs next 4.26).
 
 ### JEPA Configuration
 
@@ -145,34 +159,41 @@ All parameters are configurable via environment variables (`JEPA_*` and `TRAIN_*
 ## Project Structure
 
 ```
-├── dynamics.py              # MPC Planner (OSQP solver) & Market Simulator
-├── VAR_setup.py             # VAR model training, forecasting, ADF checks
-├── file.py                  # Main backtest loop (2020-2025)
-├── paper_trading_bot.py     # Live paper trading bot (Alpaca)
-├── cascading_mpc_v3.py      # SE701 daily MPC + intraday drift correction
-├── backtest_covar.py        # Static vs per-step covariance comparison
-├── unit_tests.py            # Pytest suite
-├── investors.py             # Benchmark comparison
-├── min_variance.py          # Min-variance benchmark
+├── var_mpc/                    # Phase 1: VAR-MPC
+│   ├── dynamics.py             # MPC Planner (OSQP solver) & Market Simulator
+│   ├── VAR_setup.py            # VAR model training, forecasting, ADF checks
+│   ├── file.py                 # Main backtest loop (2020-2025)
+│   ├── investors.py            # Benchmark comparison
+│   ├── min_variance.py         # Min-variance benchmark
+│   ├── unit_tests.py           # Pytest suite
+│   └── testcode.py             # Test code
 │
-├── jepa-training.py         # JEPA training script (configurable via env vars)
-├── regime_probe.py          # Regime classifier probe
-├── src/
+├── jepa/                       # Phase 2: JEPA + KV Retrieval
 │   ├── models/
-│   │   ├── encoder.py       # Transformer encoder
-│   │   ├── predictor.py     # Transformer predictor
-│   │   ├── decoder.py       # Linear decoder
-│   │   └── tokenizer.py     # Conv1D tokenizer
-│   └── data_loaders/
-│       ├── data_loader.py   # JEPA data loaders
-│       └── data_class.py    # CSV data loader
-├── individual_stocks/
-│   └── data_class_parquet.py # StockMarketJEPADataset (parquet)
+│   │   ├── encoder.py          # Transformer encoder (49 → 64 dim)
+│   │   ├── predictor.py        # Transformer predictor
+│   │   ├── decoder.py          # Linear decoder
+│   │   ├── tokenizer.py        # Conv1D tokenizer
+│   │   └── utils/              # Mask utils, attention modules
+│   ├── data/
+│   │   ├── data_class_parquet.py  # StockMarketJEPADataset
+│   │   ├── dataextraction.py      # DataExtractor
+│   │   └── parquet_data/          # Training + test parquet files
+│   ├── training/
+│   │   ├── jepa-training.py       # JEPA training with VICReg
+│   │   ├── test_jepa_embeddings.py # Evaluation suite
+│   │   └── regime_probe.py        # Regime classifier probe
+│   ├── embedding_db/
+│   │   ├── cost_fcn.py            # Build embedding database
+│   │   └── query.py               # KV retrieval + sparse attention
+│   ├── mpc/                       # (empty) — future MPC integration
+│   └── scripts/                   # (empty) — future scripts
 │
-├── AGENTS.md                # LLM codebase index instructions
-├── lab-notes/
-│   └── daily/               # Experiment logs (auto-indexed on commit)
-├── .codebase/               # SQLite codebase index (auto-generated)
+├── jepa-model/                 # Model checkpoints
+├── setup.py                    # Editable install (pip install -e .)
+├── AGENTS.md                   # LLM codebase index instructions
+├── lab-notes/                  # Experiment logs (auto-indexed on commit)
+├── .codebase/                  # SQLite codebase index (auto-generated)
 └── requirements.txt
 ```
 
@@ -183,7 +204,7 @@ All parameters are configurable via environment variables (`JEPA_*` and `TRAIN_*
 ```bash
 git clone https://github.com/adilfaisal01/portfolio-optimization.git
 cd portfolio-optimization
-pip install -r requirements.txt
+pip install -e .        # editable install for clean imports
 ```
 
 ### Dependencies
@@ -203,42 +224,52 @@ pip install -r requirements.txt
 ### Run the VAR-MPC Backtest
 
 ```bash
-python file.py
+python var_mpc/file.py
 ```
 
 This loads historical data (2009–2019 training, 2020–2025 test), trains the VAR model, runs the adaptive MPC loop, and generates equity curves and performance metrics.
 
-### Run the Paper Trading Bot
+### Build the Embedding Database
 
 ```bash
-python paper_trading_bot.py
+python jepa/embedding_db/cost_fcn.py
 ```
 
-Runs daily at market open: pulls data from Alpaca/IEX, forecasts with VAR, solves MPC, and rebalances the portfolio.
+Runs the JEPA encoder over all 163 training windows, saves embeddings + returns + covariance to `jepa-model/analysis/iteration-1/`.
+
+### Query Similar Regimes
+
+```python
+from jepa.embedding_db.query import weighted_financial_metrics
+
+cov, ret = weighted_financial_metrics(query_embedding, k=5, tau=1.0)
+# cov: (11, 11) — regime-conditional covariance
+# ret: (11,)   — regime-conditional expected returns
+```
 
 ### Train the JEPA Model
 
 ```bash
-python jepa-training.py
+python jepa/training/jepa-training.py
 ```
 
 Or configure via environment variables:
 
 ```bash
-JEPA_MASK_RATIO=0.3 JEPA_NUM_PATCHES=30 TRAIN_NUM_EPOCHS=10 python jepa-training.py
+JEPA_MASK_RATIO=0.3 JEPA_NUM_PATCHES=30 TRAIN_NUM_EPOCHS=10 python jepa/training/jepa-training.py
 ```
 
 ### Run Tests
 
 ```bash
-pytest unit_tests.py -v
+pytest var_mpc/unit_tests.py -v
 ```
 
 ---
 
 ## Vault Lab Notebooks
 
-Detailed experiment logs, architecture decisions, and findings live in `lab-notes/daily/`. Key entries:
+Detailed experiment logs, architecture decisions, and findings live in the Obsidian vault at `Projects/portfolio-optimization/`. Key entries:
 
 | Date | Topic |
 | --- | --- |
@@ -248,6 +279,7 @@ Detailed experiment logs, architecture decisions, and findings live in `lab-note
 | 2026-06-11 | JEPA Evaluation Autopsy — The Predictor Never Won |
 | 2026-06-21 | MPC Friction Analysis & VectorBT Validation |
 | 2026-06-24 | Regime Probe — JEPA Embeddings Encode Market Regime |
+| 2026-07-06 | Embedding Database + KV Retrieval — COVID crash → 2008 GFC |
 
 ---
 
