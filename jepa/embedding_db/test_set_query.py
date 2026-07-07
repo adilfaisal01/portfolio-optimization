@@ -36,7 +36,7 @@ start_date, end_date,vix_avg,mean_returns, covars,scores=query_similar(query_emb
 print(covars.shape)  #(5,11,11)
 print(mean_returns.shape) #(5,11)
 # print(covars[0].shape)
-# print(f'Start date:{start_date}\n\n', f'End_date:{end_date}\n\n', f'Scores: {scores} \n\n', f'Vix Averages: {torch.Tensor(mean_returns).shape}')
+print(f'Start date:{start_date}\n\n', f'End_date:{end_date}\n\n', f'Scores: {scores} \n\n', f'Vix Averages: {mean_returns}')
 
 # implementing sparse attention (top K neighbors, via the normalized scores)
 weighted_cv, weighted_mu=weighted_financial_metrics(query_emb,k=5,tau=0.4)
