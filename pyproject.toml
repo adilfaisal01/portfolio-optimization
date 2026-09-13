@@ -1,0 +1,18 @@
+# Minimal project config.
+#
+# This file exists so that tool configuration lives WITH the project and travels
+# with it on clone. It intentionally contains no build system and no packaging
+# metadata — pytest's rootdir and test collection are unaffected (verified:
+# rootdir stays at the repo root, identical collection with or without this file).
+
+[tool.pyrefly]
+# pyrefly defaults to the `basic` preset when unconfigured, and `basic` SILENCES
+# the bad-argument-type family — which is exactly how type mismatches are
+# reported. Unconfigured, the LSP appears to find nothing at all.
+#
+#   no config      -> 0 errors on a file with real type errors
+#   preset=default -> errors reported correctly
+#
+# `strict` is NOT used: it floods with implicit-any-* annotation-completeness
+# noise. `default` catches real type errors without the noise.
+preset = "default"
