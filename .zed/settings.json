@@ -21,7 +21,7 @@
     "pyrefly": {
       "settings": {
         "pyrefly": {
-          "python_interpreter": "/home/adilfaisal01/.pyenv/versions/ML-DL/bin/python"
+          "python_interpreter": "/home/adilfaisal01/.venvs/ML-DL/bin/python"
         }
       }
     },
@@ -33,10 +33,4 @@
         ]
       }
     }
-  },
-  "terminal": {
-    "env": {
-      "PYENV_VERSION": "ML-DL"
-    }
-  }
-}
+  }}
